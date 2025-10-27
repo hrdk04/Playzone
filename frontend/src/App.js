@@ -23,9 +23,13 @@ import History from "./userSide/History";
 import Profile from "./userSide/Profile";
 import PaymentPage from "./userSide/PaymentPage";
 import FinalResults from "./userSide/FinalResults.js";
+import ChatPage from "./pages/ChatPage";
 
 // Admin Layout
 import AdminLayout from "./adminside/AdminLayout";
+
+// Import ChatPopup
+import ChatPopup from "./components/ChatPopup";
 
 // Wrapper component to conditionally render Navbar and Footer
 const AppLayout = ({ children }) => {
@@ -37,6 +41,7 @@ const AppLayout = ({ children }) => {
       {!isAdminRoute && <Navbar />}
       {children}
       {!isAdminRoute && <Footer />}
+      {!isAdminRoute && <ChatPopup />}
     </>
   );
 };
@@ -59,12 +64,14 @@ function App() {
           <Route path="/forget-password" element={<ForgetPassword />} />
 
           {/* User */}
+          <Route path="/DashBoard" element={<DashBoard />} />
           <Route path="/dashboard/*" element={<DashBoard />} />
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/tournaments/results/:id" element={<FinalResults />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/history" element={<History />} />
           <Route path="/payments" element={<PaymentPage />} />
+          <Route path="/chat" element={<ChatPage />} />
 
           {/* Admin Section with its own layout */}
           <Route path="/admin/*" element={<AdminLayout />} />

@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import useSWR from "swr";
 import axios from "axios";
+import AdminBroadcasting from "./components/AdminBroadcasting";
 
 const fetcher = (url) => axios.get(url).then((r) => r.data);
 
@@ -179,9 +180,12 @@ export default function AdminDashboard({ isMobile = false }) {
   return (
     <div style={{ padding: isMobile ? "1rem" : "20px", backgroundColor: theme.colors.backgroundColor, color: theme.colors.white, minHeight: "100vh", fontFamily: theme.fonts.primary }}>
       <Toaster position="top-right" reverseOrder={false} />
-      <h1 style={{ textAlign: "center", fontSize: isMobile ? "1.8rem" : "2.5rem", marginBottom: isMobile ? "1rem" : "20px", textShadow: theme.shadows.headerGlow, color: theme.colors.primary }}>
-        Admin Dashboard
-      </h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <h1 style={{ fontSize: isMobile ? "1.8rem" : "2.5rem", textShadow: theme.shadows.headerGlow, color: theme.colors.primary, margin: 0 }}>
+          Admin Dashboard
+        </h1>
+        <AdminBroadcasting />
+      </div>
 
       {/* Stat Panels */}
       <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", flexWrap: "wrap", justifyContent: isMobile ? "center" : "flex-start", gap: isMobile ? "1rem" : "20px", marginBottom: "40px" }}>

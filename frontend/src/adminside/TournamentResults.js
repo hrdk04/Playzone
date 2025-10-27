@@ -17,6 +17,8 @@ const TournamentResults = () => {
   const [published, setPublished] = useState(false)
   const [showImageGenerator, setShowImageGenerator] = useState(false)
   const [winners, setWinners] = useState([])
+  const [manualResultImage, setManualResultImage] = useState(null)
+  const [uploadedImagePath, setUploadedImagePath] = useState("")
 
   const { data: withParts, error: withPartsError, mutate: mutateWithParts } = useSWR(
     "http://localhost:5000/admin/tournaments/withParticipants",
@@ -75,8 +77,30 @@ const TournamentResults = () => {
         { participantId: thirdPlace, position: 3 },
       ]
 
+      // Handle manual image upload if exists
+      let result_image_path = ""
+      if (manualResultImage) {
+        const formData = new FormData()
+        formData.append("resultImage", manualResultImage)
+        
+        try {
+          const uploadResponse = await axios.post(`http://localhost:5000/admin/tournaments/${id}/upload-result-image`, formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          })
+          result_image_path = uploadResponse.data.imagePath
+          setUploadedImagePath(result_image_path)
+        } catch (uploadError) {
+          console.error("Image upload failed:", uploadError)
+          alert("Failed to upload custom result image. Proceeding with rankings only.")
+        }
+      }
+
+      // Publish results with optional image path
       await axios.put(`http://localhost:5000/admin/tournaments/${id}/publish-result`, {
-        rankings
+        rankings,
+        result_image_path: result_image_path || undefined
       })
 
       setPublished(true)
@@ -102,10 +126,10 @@ const TournamentResults = () => {
       setWinners(winnersData)
       setShowImageGenerator(true)
       
-      alert("Results published successfully! You can now generate a shareable result image.")
+      alert("Results published successfully! You can now generate or view result images.")
     } catch (err) {
       console.error("[v0] Publish results failed:", err)
-      alert("Failed to publish results. Check server logs.")
+      alert(`Failed to publish results: ${err.response?.data?.message || err.message}`)
     } finally {
       setLoading(false)
     }
@@ -338,6 +362,50 @@ const TournamentResults = () => {
               </p>
             </div>
           )}
+
+          {/* Manual Image Upload */}
+          <div style={{ 
+            marginBottom: 20,
+            background: "rgba(255,255,255,0.05)",
+            borderRadius: 8,
+            padding: 16
+          }}>
+            <h3 style={{ color: theme.colors.secondary, marginBottom: 12 }}>Custom Result Image (Optional)</h3>
+            <p style={{ color: theme.colors.lightGray, marginBottom: 16, fontSize: "0.9em" }}>
+              Upload a custom result image that will be shown alongside the generated one. Max size: 5MB
+            </p>
+            
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                    alert("Image size should be less than 5MB")
+                    e.target.value = ""
+                    return
+                  }
+                  setManualResultImage(file)
+                }
+              }}
+              disabled={published}
+              style={{
+                width: "100%",
+                padding: "10px",
+                borderRadius: "8px",
+                border: `1px solid ${theme.colors.primary}`,
+                background: "#0f0f0f",
+                color: theme.colors.white,
+                marginBottom: "8px"
+              }}
+            />
+            {manualResultImage && (
+              <p style={{ color: theme.colors.lightGray, fontSize: "0.9em" }}>
+                Selected: {manualResultImage.name}
+              </p>
+            )}
+          </div>
 
           {/* Action Buttons */}
           <div style={{ display: "flex", gap: 12 }}>

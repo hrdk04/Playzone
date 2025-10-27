@@ -6,17 +6,56 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import nodemailer from "nodemailer"
-import cron from 'node-cron'
-import fs from 'fs'
+import nodemailer from "nodemailer";
+import cron from 'node-cron';
+import fs from 'fs';
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import { createServer } from "http";
+import { Server } from "socket.io";
+
 dotenv.config();
 
 // Temporary OTP store: { email: { otp, expires } }
 const otpStore = {}
 
 const app = express()
-app.use(cors())
+const httpServer = createServer(app);
 
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "http:", "https:", "ws:", "wss:"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      connectSrc: ["'self'", "http:", "https:", "ws:", "wss:"]
+    },
+  },
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 1 * 60 * 1000, // 1 minute
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 500, // limit each IP to 500 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use(limiter);
+
+// CORS configuration for chat integration
+const corsOptions = {
+  origin: ["http://localhost:3000", "http://localhost:3001"], // PlayZone and Chat frontends
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions))
 app.use(bodyParser.json({ limit: '50mb' }))
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }))
 
@@ -26,8 +65,114 @@ app.use('/uploads', express.static('uploads'))
 
 
 import { startTournamentAutomation } from "./tournament-status-automation.js";
+import User from "./models/User.js";
 
 startTournamentAutomation(60000)
+
+// Socket.io configuration for chat integration
+const io = new Server(httpServer, {
+  cors: corsOptions,
+  transports: ['websocket', 'polling'],
+});
+
+// Socket.io Authentication Middleware
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+      return next(new Error("Authentication required"));
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key");
+    const user = await User.findById(decoded.userId);
+
+    if (!user) {
+      return next(new Error("User not found"));
+    }
+
+    socket.userId = user._id.toString();
+    socket.user = user;
+    next();
+  } catch (error) {
+    next(new Error("Invalid token"));
+  }
+});
+
+// Socket.io Connection Handler for chat
+const userSockets = new Map(); // userId -> socketId
+
+io.on("connection", (socket) => {
+  console.log(`User connected: ${socket.userId}`);
+  userSockets.set(socket.userId, socket.id);
+
+  // Send online users list
+  io.emit("onlineUsers", Array.from(userSockets.keys()));
+
+  // Join user's personal room
+  socket.join(`user:${socket.userId}`);
+
+  // Send message
+  socket.on("sendMessage", async (data) => {
+    try {
+      const { receiverId, content } = data;
+
+      // Validate message content
+      if (!content || content.trim().length === 0) {
+        return socket.emit("error", { message: "Message content cannot be empty" });
+      }
+
+      if (content.length > 1000) {
+        return socket.emit("error", { message: "Message too long" });
+      }
+
+      // Create message (you'll need to create a Message model)
+      const message = {
+        sender: socket.userId,
+        receiver: receiverId,
+        content: content.trim(),
+        createdAt: new Date(),
+      };
+
+      // Send to sender
+      socket.emit("receiveMessage", message);
+
+      // Send to receiver if online
+      const receiverSocketId = userSockets.get(receiverId);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("receiveMessage", message);
+      }
+
+      // Emit to both users' personal rooms for real-time updates
+      io.to(`user:${socket.userId}`).emit("messageSent", message);
+      io.to(`user:${receiverId}`).emit("messageReceived", message);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      socket.emit("error", { message: "Failed to send message" });
+    }
+  });
+
+  // Handle follow request events
+  socket.on("followRequestSent", (data) => {
+    const { receiverId } = data;
+    const receiverSocketId = userSockets.get(receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newFollowRequest", {
+        from: socket.user.username,
+        userId: socket.userId,
+      });
+    }
+    // Update sender's UI
+    socket.emit("userFollowed", { message: "Request sent successfully" });
+  });
+
+  // Disconnect handler
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.userId}`);
+    userSockets.delete(socket.userId);
+    io.emit("onlineUsers", Array.from(userSockets.keys()));
+    io.emit("userOffline", socket.userId);
+  });
+});
 // ==========================
 //  HELPER FUNCTION
 // ==========================
@@ -39,21 +184,7 @@ function generateTournamentId() {
 //  MODEL DEFINITIONS
 // ==========================
 
-// USER MODEL
-const userSchema = new mongoose.Schema(
-  {
-    fullName: { type: String, required: true },
-    username: { type: String, required: true, unique: true },
-    dob: { type: String },
-    email: { type: String, required: true, unique: true },
-    contact: { type: String },
-    password: { type: String, required: true },
-    amount: { type: Number, default: 0 },
-  },
-  { timestamps: true },
-)
-
-const User = mongoose.model("user_master", userSchema)
+// User model is now imported from models/User.js
 
 // ADMIN MODEL
 const adminSchema = new mongoose.Schema(
@@ -146,8 +277,9 @@ mongoose
       console.error("Error creating default admin:", error)
     }
 
-    app.listen(5000, () => {
+    httpServer.listen(5000, () => {
       console.log("Server started at http://localhost:5000")
+      console.log("Socket.io server is running")
     })
   })
   .catch((err) => console.log("MongoDB connection error:", err))
@@ -171,6 +303,316 @@ transporter.verify().then(
 )
 
 // ==========================
+//  CHAT INTEGRATION ROUTES
+// ==========================
+
+// Middleware to verify JWT token
+const auth = async (req, res, next) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ message: 'No token, authorization denied' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key");
+    const user = await User.findById(decoded.userId);
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Token is not valid' });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    res.status(401).json({ message: 'Token is not valid' });
+  }
+};
+
+// Get current user for chat
+app.get("/api/auth/me", auth, async (req, res) => {
+  try {
+    res.json(req.user.getChatData());
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Enhanced search users for chat
+app.get("/api/users/search", auth, async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) {
+      return res.json([]);
+    }
+
+    // Search in multiple fields including tournament participation
+    const users = await User.find({
+      $or: [
+        { username: { $regex: q, $options: 'i' } },
+        { fullName: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } },
+        { teamName: { $regex: q, $options: 'i' } }
+      ],
+      _id: { $ne: req.user._id } // Exclude current user
+    }).limit(10);
+
+    // Also search for users by tournament participation
+    const tournamentSearch = await Tournament.find({
+      $or: [
+        { t_id: { $regex: q, $options: 'i' } },
+        { "participants.team_name": { $regex: q, $options: 'i' } }
+      ]
+    }).populate('participants.user_id', 'username fullName email teamName');
+
+    // Extract users from tournament search
+    const tournamentUsers = [];
+    tournamentSearch.forEach(tournament => {
+      tournament.participants.forEach(participant => {
+        if (participant.user_id && participant.user_id._id.toString() !== req.user._id.toString()) {
+          tournamentUsers.push({
+            ...participant.user_id.toObject(),
+            foundVia: tournament.t_id,
+            teamName: participant.team_name
+          });
+        }
+      });
+    });
+
+    // Combine and deduplicate results
+    const allUsers = [...users, ...tournamentUsers];
+    const uniqueUsers = allUsers.reduce((acc, user) => {
+      const existing = acc.find(u => u._id.toString() === user._id.toString());
+      if (!existing) {
+        acc.push(user);
+      }
+      return acc;
+    }, []);
+
+    const searchResults = uniqueUsers.map(user => ({
+      id: user._id,
+      username: user.username,
+      firstName: user.firstName || user.fullName.split(' ')[0],
+      lastName: user.lastName || user.fullName.split(' ').slice(1).join(' '),
+      email: user.email,
+      teamName: user.teamName || user.foundVia,
+      foundVia: user.foundVia,
+      isFollowing: req.user.following.includes(user._id),
+      hasRequested: req.user.sentFollowRequests.includes(user._id),
+      followers: user.followers?.length || 0
+    }));
+
+    res.json(searchResults);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get suggested users based on tournaments
+app.get("/api/users/suggested", auth, async (req, res) => {
+  try {
+    // Find users who joined the same tournaments
+    const userTournaments = await Tournament.find({
+      "participants.user_id": req.user._id
+    });
+
+    const tournamentIds = userTournaments.map(t => t._id);
+    
+    // Find other users who joined the same tournaments
+    const suggestedUsers = await User.find({
+      tournamentsJoined: { $in: tournamentIds },
+      _id: { 
+        $nin: [
+          req.user._id,
+          ...req.user.following,
+          ...req.user.sentFollowRequests
+        ]
+      }
+    }).limit(10);
+
+    const suggestions = suggestedUsers.map(user => ({
+      id: user._id,
+      username: user.username,
+      firstName: user.firstName || user.fullName.split(' ')[0],
+      lastName: user.lastName || user.fullName.split(' ').slice(1).join(' '),
+      email: user.email,
+      followers: user.followers.length,
+      isFollowing: false,
+      hasRequested: false
+    }));
+
+    res.json(suggestions);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Send follow request
+app.post("/api/follow/request", auth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    if (userId === req.user._id.toString()) {
+      return res.status(400).json({ message: "Cannot follow yourself" });
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (req.user.following.includes(userId)) {
+      return res.status(400).json({ message: "Already following this user" });
+    }
+
+    if (req.user.sentFollowRequests.includes(userId)) {
+      return res.status(400).json({ message: "Follow request already sent" });
+    }
+
+    // Add to sent requests
+    req.user.sentFollowRequests.push(userId);
+    await req.user.save();
+
+    // Add to target user's pending requests
+    targetUser.pendingFollowRequests.push(req.user._id);
+    await targetUser.save();
+
+    res.json({ message: "Follow request sent successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Cancel follow request
+app.post("/api/follow/cancel", auth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Remove from sent requests
+    req.user.sentFollowRequests = req.user.sentFollowRequests.filter(
+      id => id.toString() !== userId
+    );
+    await req.user.save();
+
+    // Remove from target user's pending requests
+    targetUser.pendingFollowRequests = targetUser.pendingFollowRequests.filter(
+      id => id.toString() !== req.user._id.toString()
+    );
+    await targetUser.save();
+
+    res.json({ message: "Follow request cancelled successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get pending follow requests
+app.get("/api/follow/pending", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .populate('pendingFollowRequests', 'username fullName email');
+    
+    res.json(user.pendingFollowRequests);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Accept follow request
+app.post("/api/follow/accept", auth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    const requester = await User.findById(userId);
+    if (!requester) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Remove from pending requests
+    req.user.pendingFollowRequests = req.user.pendingFollowRequests.filter(
+      id => id.toString() !== userId
+    );
+    
+    // Add to followers
+    req.user.followers.push(userId);
+    await req.user.save();
+
+    // Remove from requester's sent requests
+    requester.sentFollowRequests = requester.sentFollowRequests.filter(
+      id => id.toString() !== req.user._id.toString()
+    );
+    
+    // Add to requester's following
+    requester.following.push(req.user._id);
+    await requester.save();
+
+    res.json({ message: "Follow request accepted" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Reject follow request
+app.post("/api/follow/reject", auth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    const requester = await User.findById(userId);
+    if (!requester) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Remove from pending requests
+    req.user.pendingFollowRequests = req.user.pendingFollowRequests.filter(
+      id => id.toString() !== userId
+    );
+    await req.user.save();
+
+    // Remove from requester's sent requests
+    requester.sentFollowRequests = requester.sentFollowRequests.filter(
+      id => id.toString() !== req.user._id.toString()
+    );
+    await requester.save();
+
+    res.json({ message: "Follow request rejected" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Unfollow user
+app.post("/api/follow/unfollow", auth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Remove from following
+    req.user.following = req.user.following.filter(
+      id => id.toString() !== userId
+    );
+    await req.user.save();
+
+    // Remove from target user's followers
+    targetUser.followers = targetUser.followers.filter(
+      id => id.toString() !== req.user._id.toString()
+    );
+    await targetUser.save();
+
+    res.json({ message: "Unfollowed successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ==========================
 //  USER AUTH & PROFILE ROUTES
 // ==========================
 
@@ -184,9 +626,32 @@ app.post("/signup", async (req, res) => {
     const exists = await User.findOne({ $or: [{ username }, { email }] })
     if (exists) return res.status(400).json({ msg: "User already exists!" })
 
-    const user = new User(req.body)
+    // Set firstName and lastName for chat compatibility
+    const nameParts = fullName.split(' ')
+    const firstName = nameParts[0]
+    const lastName = nameParts.slice(1).join(' ')
+
+    const userData = {
+      ...req.body,
+      firstName,
+      lastName,
+    }
+
+    const user = new User(userData)
     await user.save()
-    res.status(201).json({ msg: "Signup successful!" })
+
+    // Generate JWT token for chat integration
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET || "your-secret-key",
+      { expiresIn: "7d" }
+    )
+
+    res.status(201).json({ 
+      msg: "Signup successful!",
+      user: user.getTournamentData(),
+      token, // Include token for chat authentication
+    })
   } catch (error) {
     res.status(500).json({ msg: "Signup failed", error: error.message })
   }
@@ -201,11 +666,22 @@ app.post("/login", async (req, res) => {
     })
 
     if (!user) return res.status(400).json({ msg: "User not found!" })
-    if (user.password !== password) return res.status(400).json({ msg: "Incorrect password!" })
+    
+    // Use bcrypt comparison for password
+    const isPasswordValid = await user.comparePassword(password)
+    if (!isPasswordValid) return res.status(400).json({ msg: "Incorrect password!" })
+
+    // Generate JWT token for chat integration
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET || "your-secret-key",
+      { expiresIn: "7d" }
+    )
 
     res.status(200).json({
       msg: "Login successful!",
-      user,
+      user: user.getTournamentData(),
+      token, // Include token for chat authentication
     })
   } catch (error) {
     res.status(500).json({ msg: "Server error" })
@@ -376,6 +852,175 @@ app.put("/updateUser", async (req, res) => {
     res.status(500).json({ message: "Server error" })
   }
 })
+
+// ==========================
+//  ADMIN BROADCASTING SYSTEM
+// ==========================
+
+// Send broadcast notification to all users
+app.post("/admin/broadcast", async (req, res) => {
+  try {
+    const { message, type, tournamentId } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ message: "Message is required" });
+    }
+
+    let recipients = [];
+    
+    if (tournamentId) {
+      // Send to specific tournament participants
+      const tournament = await Tournament.findOne({ t_id: tournamentId })
+        .populate('participants.user_id', 'email fullName username');
+      
+      if (!tournament) {
+        return res.status(404).json({ message: "Tournament not found" });
+      }
+      
+      recipients = tournament.participants.map(p => ({
+        email: p.user_id.email,
+        name: p.user_id.fullName || p.user_id.username
+      }));
+    } else {
+      // Send to all users
+      const users = await User.find({}, 'email fullName username');
+      recipients = users.map(user => ({
+        email: user.email,
+        name: user.fullName || user.username
+      }));
+    }
+
+    const subject = `🎮 PLAYZONE Notification - ${type || 'General Update'}`;
+    
+    const htmlBody = `
+      <div style="
+        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        color: #fff;
+        font-family: 'Segoe UI', Roboto, sans-serif;
+        padding: 35px;
+        border-radius: 15px;
+        text-align: center;
+        box-shadow: 0 0 30px rgba(0,0,0,0.6);
+        max-width: 600px;
+        margin: auto;
+      ">
+        <h1 style="font-size: 28px; margin-bottom: 20px; color: #00ffcc;">
+          🎮 PLAYZONE NOTIFICATION
+        </h1>
+        
+        <div style="
+          background: rgba(0, 255, 200, 0.1);
+          border: 1px solid #00ffcc;
+          border-radius: 8px;
+          padding: 20px;
+          margin: 20px 0;
+        ">
+          <p style="font-size: 16px; line-height: 1.6; color: #ddd;">
+            ${message}
+          </p>
+        </div>
+        
+        <div style="margin: 25px 0;">
+          <a href="http://localhost:3000/DashBoard" target="_blank" style="
+            background: linear-gradient(90deg, #00ffcc, #0077ff);
+            padding: 12px 25px;
+            color: #fff;
+            font-weight: bold;
+            border-radius: 8px;
+            text-decoration: none;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px #00ffcc;
+            display: inline-block;
+          ">Visit Dashboard</a>
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid #333; margin: 25px 0;">
+        <p style="font-size: 12px; color: #888;">
+          Powered by <b>PLAYZONE</b> 🎯<br/>
+          <span style="color:#555;">"Where every gamer becomes a legend."</span>
+        </p>
+      </div>
+    `;
+
+    // Send emails
+    const emailPromises = recipients.map(recipient => 
+      transporter.sendMail({
+        from: process.env.SMTP_USER,
+        to: recipient.email,
+        subject,
+        html: htmlBody,
+      }).catch(err => {
+        console.error(`Failed to send email to ${recipient.email}:`, err);
+        return { email: recipient.email, success: false, error: err.message };
+      })
+    );
+
+    const results = await Promise.allSettled(emailPromises);
+    const successCount = results.filter(r => r.status === 'fulfilled').length;
+    const failureCount = results.length - successCount;
+
+    // Also emit socket event for real-time notifications
+    io.emit('adminBroadcast', {
+      message,
+      type: type || 'general',
+      tournamentId,
+      timestamp: new Date(),
+    });
+
+    res.json({
+      message: `Broadcast sent successfully`,
+      recipients: recipients.length,
+      successCount,
+      failureCount,
+    });
+
+  } catch (error) {
+    console.error("Broadcast error:", error);
+    res.status(500).json({ message: "Failed to send broadcast" });
+  }
+});
+
+// Get predefined notification templates
+app.get("/admin/broadcast/templates", async (req, res) => {
+  try {
+    const templates = [
+      {
+        id: "new_tournament",
+        title: "New Tournament Created",
+        message: "A new tournament has been created! Check out the latest competitions and register now.",
+        type: "tournament"
+      },
+      {
+        id: "results_published",
+        title: "Tournament Results Published",
+        message: "Tournament results have been published! Check your dashboard to see if you won any prizes.",
+        type: "results"
+      },
+      {
+        id: "maintenance",
+        title: "Scheduled Maintenance",
+        message: "We will be performing scheduled maintenance. The platform may be temporarily unavailable.",
+        type: "maintenance"
+      },
+      {
+        id: "prize_distribution",
+        title: "Prize Distribution",
+        message: "Prize money has been distributed to winners! Check your wallet balance.",
+        type: "prize"
+      },
+      {
+        id: "special_event",
+        title: "Special Event",
+        message: "Join our special gaming event with exclusive rewards and prizes!",
+        type: "event"
+      }
+    ];
+
+    res.json(templates);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch templates" });
+  }
+});
 
 // ==========================
 //  ADMIN AUTH & DASHBOARD
@@ -2002,6 +2647,22 @@ app.post("/tournament/register", async (req, res) => {
       payment_status: payment_method === "wallet" ? "paid" : "pending",
     })
     await tournament.save()
+
+    // Add tournament to user's joined tournaments
+    if (!user.tournamentsJoined.includes(tournament._id)) {
+      user.tournamentsJoined.push(tournament._id);
+      user.gamingStats.totalTournaments += 1;
+      await user.save();
+    }
+
+    // Emit socket event for real-time updates
+    io.emit('tournamentJoined', {
+      userId: user._id,
+      tournamentId: tournament.t_id,
+      tournamentName: tournament.game,
+      teamName: team_name,
+      participantsCount: tournament.participants.length
+    });
 
     // Payment record
     const payment = new Payment({

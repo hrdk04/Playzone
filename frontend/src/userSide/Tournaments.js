@@ -40,9 +40,16 @@ export default function Tournaments() {
   useEffect(() => {
     if (location.state?.resumeRegister && location.state?.tournament) {
       setSelectedTournament(location.state.tournament)
-      if (location.state.teamName) setTeamName(location.state.teamName)
-      setShowConfirmPay(true)
-      navigate(location.pathname, { replace: true, state: {} })
+      if (location.state.teamName) {
+        setTeamName(location.state.teamName)
+        // Automatically trigger registration after returning from payment
+        setShowConfirmPay(true)
+        setTimeout(() => {
+          handlePayAndRegister()
+        }, 500)
+      }
+      // Clear the state after processing
+      navigate(location.pathname + location.search, { replace: true, state: {} })
     }
   }, [location.state, navigate])
 
@@ -129,7 +136,7 @@ export default function Tournaments() {
             action: "topup_then_register",
             topUpFor: "tournament",
             requiredAmount: deficit,
-            returnTo: "/tournaments",
+            returnTo: location.pathname + location.search, // Preserve exact location
             meta: selectedTournament,
             teamName: teamName,
           },

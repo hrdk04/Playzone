@@ -84,9 +84,26 @@ export default function PaymentPage() {
             : "http://localhost:5000/payment/withdraw"
 
         const res = await axios.post(url, payload)
-        alert(`${modalType === "deposit" ? "Deposit" : "Withdrawal"} successful — new balance ₹${res.data.balance}`)
-        setUser((prev) => ({ ...prev, amount: res.data.balance }))
+        const newBalance = res.data.balance
+        setUser((prev) => ({ ...prev, amount: newBalance }))
         await loadHistory(user._id)
+
+        // Check if there's a pending tournament registration
+        const pendingRegistration = location.state?.action === "topup_then_register" && location.state?.meta
+
+        if (pendingRegistration) {
+          // Instead of direct registration, return to tournament registration flow
+          alert("Payment successful! Returning to tournament registration...")
+          navigate("/tournaments", {
+            state: {
+              resumeRegister: true,
+              tournament: location.state.meta,
+              teamName: location.state.teamName
+            }
+          })
+        } else {
+          alert(`${modalType === "deposit" ? "Deposit" : "Withdrawal"} successful — new balance ₹${newBalance}`)
+        }
       } catch (err) {
         console.error(err)
         alert(err.response?.data?.message || "Payment failed")

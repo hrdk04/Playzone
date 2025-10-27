@@ -53,6 +53,11 @@ export default function Login() {
           // ✅ Store the actual user object (includes _id)
           localStorage.setItem("user", JSON.stringify(response.data.user));
           localStorage.setItem("userName", response.data.user.username);
+          
+          // Store JWT token for chat authentication
+          if (response.data.token) {
+            localStorage.setItem("token", response.data.token);
+          }
 
           window.dispatchEvent(new Event("storage"));
           alert(`Logged in as ${response.data.user.username}`);
