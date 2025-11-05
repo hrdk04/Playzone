@@ -1,11 +1,12 @@
-
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import theme from "../theme";
 import axios from 'axios';
+import toast, { Toaster } from "react-hot-toast"; // ✅ ADDED
 
 export default function Signup() {
   const [step, setStep] = useState(1);
+  const [ageError, setAgeError] = useState("");
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -19,15 +20,45 @@ export default function Signup() {
     termsAccepted: false,
   });
 
-  const [serverOtp, setServerOtp] = useState(""); // pretend server OTP
+  const [serverOtp, setServerOtp] = useState("");
+
+  // Calculate age from DOB
+  const calculateAge = (dob) => {
+    if (!dob) return 0;
+    const today = new Date();
+    const birthDate = new Date(dob);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
 
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
+
+    // Validate age when DOB changes
+    if (e.target.name === 'dob') {
+      const age = calculateAge(value);
+      if (age < 18 && value) {
+        setAgeError(`You must be at least 18 years old to register. Your current age: ${age} years`);
+      } else {
+        setAgeError("");
+      }
+    }
   };
 
   const handleNextStep1 = (e) => {
     e.preventDefault();
+    
+    // Check age before proceeding
+    if (ageError) {
+      toast.error("You must be at least 18 years old to register."); // ✅ CHANGED
+      return;
+    }
+    
     setStep(2);
   };
 
@@ -37,27 +68,26 @@ export default function Signup() {
     setServerOtp(otp);
     setFormData({ ...formData, otp });
     console.log("Sending OTP to email:", formData.email, "OTP:", otp);
+    toast.success("OTP sent to your email!"); // ✅ ADDED
     setStep(3);
   };
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     if (formData.otp === serverOtp) {
-
       try {
-        const res= await axios.post("http://localhost:5000/signup",formData);
+        const res = await axios.post("http://localhost:5000/signup", formData);
         console.log("Signup Success:", formData);
-        setTimeout(()=>{
-          alert("Signup successful!");
+        toast.success("Signup successful! Redirecting to login..."); // ✅ CHANGED
+        setTimeout(() => {
           window.location.href = "/login";
-        },2000)
-
+        }, 2000);
       } catch (error) {
         console.error(error);
-        alert("Error Saving User Data.")
+        toast.error("Error Saving User Data."); // ✅ CHANGED
       }
     } else {
-      alert("Invalid OTP. Please try again.");
+      toast.error("Invalid OTP. Please try again."); // ✅ CHANGED
     }
   };
 
@@ -75,12 +105,12 @@ export default function Signup() {
     <div
       style={{
         position: "relative",
-        minHeight: "80vh",        
-        backgroundImage:" url('https://st4.depositphotos.com/24297044/27344/v/450/depositphotos_273440920-stock-illustration-blue-background-gradient-abstract-texture.jpg')",
-        backgroundRepeat:'no-repeat',
-        backgroundSize:"cover",
-        backgroundPosition:'fixed',
-        backgroundAttachment:'fixed',
+        minHeight: "80vh",
+        backgroundImage: " url('https://st4.depositphotos.com/24297044/27344/v/450/depositphotos_273440920-stock-illustration-blue-background-gradient-abstract-texture.jpg')",
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: "cover",
+        backgroundPosition: 'fixed',
+        backgroundAttachment: 'fixed',
         color: theme.colors.white,
         fontFamily: theme.fonts.primary,
         display: "flex",
@@ -89,11 +119,14 @@ export default function Signup() {
         padding: "50px 20px",
       }}
     >
+      {/* ✅ ADDED: Toaster component */}
+      <Toaster position="top-right" reverseOrder={false} />
+
       <div
         style={{
           width: "100%",
           maxWidth: "400px",
-          margin:"6% auto",
+          margin: "6% auto",
           padding: "30px",
           borderRadius: "12px",
           background: theme.gradients.navbarAlt1,
@@ -120,7 +153,7 @@ export default function Signup() {
               placeholder="Full Name"
               value={formData.fullName}
               onChange={handleChange}
-              // required
+              required
               style={inputStyle}
             />
             <input
@@ -129,35 +162,40 @@ export default function Signup() {
               placeholder="Username"
               value={formData.username}
               onChange={handleChange}
-              // required
+              required
               style={inputStyle}
             />
+            
+            {/* DOB with age validation */}
             <input
               type="date"
               name="dob"
               value={formData.dob}
               onChange={handleChange}
-              // required
-              style={inputStyle}
-            />
-            <button
-              type="submit"
+              max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+              required
               style={{
-                width: "100%",
-                padding: theme.spacing.buttonPadding,
-                background: theme.gradients.primaryButton,
-                color: theme.colors.white,
-                border: "none",
-                borderRadius: "6px",
-                cursor: "pointer",
-                boxShadow: theme.shadows.buttonShadow,
-                fontFamily: theme.fonts.primary,
+                ...inputStyle,
+                border: ageError ? "2px solid #ff4c4c" : theme.borders.activeLink
               }}
-            >
-              Next
-            </button>
+            />
+            
+            {/* Age error message */}
+            {ageError && (
+              <div style={{
+                padding: "10px",
+                marginBottom: "15px",
+                background: "rgba(255, 76, 76, 0.1)",
+                border: "1px solid #ff4c4c",
+                borderRadius: "6px",
+                color: "#ff4c4c",
+                fontSize: "14px",
+              }}>
+                ⚠️ {ageError}
+              </div>
+            )}
 
-            <div style={{ marginTop: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ margin: "20px 1px", display: "flex", alignItems: "center", gap: "10px" }}>
               <input
                 type="checkbox"
                 name="termsAccepted"
@@ -170,6 +208,24 @@ export default function Signup() {
                 I agree to the <Link to="/terms" style={{ color: theme.colors.primaryGreen, textDecoration: "none", textShadow: theme.shadows.textGlow }}>Terms and Conditions</Link>
               </label>
             </div>
+            <button
+              type="submit"
+              disabled={!!ageError}
+              style={{
+                width: "100%",
+                padding: theme.spacing.buttonPadding,
+                background: ageError ? "#666" : theme.gradients.primaryButton,
+                color: theme.colors.white,
+                border: "none",
+                borderRadius: "6px",
+                cursor: ageError ? "not-allowed" : "pointer",
+                boxShadow: theme.shadows.buttonShadow,
+                fontFamily: theme.fonts.primary,
+                opacity: ageError ? 0.6 : 1,
+              }}
+            >
+              Next
+            </button>
           </form>
         )}
 
@@ -182,7 +238,7 @@ export default function Signup() {
               placeholder="Email"
               value={formData.email}
               onChange={handleChange}
-              // required
+              required
               style={inputStyle}
             />
             <input
@@ -191,7 +247,7 @@ export default function Signup() {
               placeholder="Contact Number"
               value={formData.contact}
               onChange={handleChange}
-              // required
+              required
               style={inputStyle}
             />
             <input
@@ -200,7 +256,7 @@ export default function Signup() {
               placeholder="Password"
               value={formData.password}
               onChange={handleChange}
-              // required
+              required
               style={inputStyle}
             />
             <input
@@ -209,7 +265,7 @@ export default function Signup() {
               placeholder="Confirm Password"
               value={formData.confirmPassword}
               onChange={handleChange}
-              // required
+              required
               style={inputStyle}
             />
             <button
@@ -243,7 +299,7 @@ export default function Signup() {
               placeholder="Enter OTP"
               value={formData.otp}
               onChange={handleChange}
-              // required
+              required
               style={inputStyle}
             />
             <button

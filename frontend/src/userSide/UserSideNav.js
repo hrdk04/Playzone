@@ -8,11 +8,11 @@ const UserSideNav = () => {
   const location = useLocation();
 
   const links = [
-    { path: "/dashboard", label: "🏠 Dashboard" },
-    { path: "/tournaments", label: "🎮 Tournaments" },
-    { path: "/history", label: "📜 History" },
-    { path: "/payments", label: "💳 Payments" }, // added
-    { path: "/profile", label: "👤 Profile" },
+    { path: "/dashboard", label: " Dashboard" },
+    { path: "/tournaments", label: " Tournaments" },
+    { path: "/history", label: " History" },
+    { path: "/payments", label: " Payments" }, // added
+    { path: "/profile", label: " Profile" },
   ];
 
   return (

@@ -4,12 +4,7 @@ import theme from "../theme"
 import useSWR from "swr"
 import axios from "axios"
 import { useEffect, useMemo, useState } from "react"
-
-const mockParticipants = (id) => [
-  { id: `u-${id}-1`, name: "John Doe", username: "johnny", email: "john@example.com" },
-  { id: `u-${id}-2`, name: "Aisha Khan", username: "aisha", email: "aisha@example.com" },
-  { id: `u-${id}-3`, name: "Liam Patel", username: "liam", email: "liam@example.com" },
-]
+import toast, { Toaster } from "react-hot-toast"
 
 const parseStartTime = (t) => {
   if (!t?.t_date || !t?.t_time) return null
@@ -32,8 +27,10 @@ const TournamentStart = () => {
   const [saved, setSaved] = useState(false)
   const [running, setRunning] = useState(false)
   const [completed, setCompleted] = useState(false)
+  const [sendingAll, setSendingAll] = useState(false)
+  const [sendingIndividual, setSendingIndividual] = useState({})
 
-  const { data: withParts } = useSWR("http://localhost:5000/admin/tournaments/withParticipants", (url) =>
+  const { data: withParts, mutate } = useSWR("http://localhost:5000/admin/tournaments/withParticipants", (url) =>
     axios.get(url).then((r) => r.data),
   )
 
@@ -58,8 +55,9 @@ const TournamentStart = () => {
         try {
           await axios.put(`http://localhost:5000/admin/tournaments/${id}`, { t_status: "completed" })
           setCompleted(true)
+          toast.success("Tournament automatically completed!")
         } catch (e) {
-          console.error("[v0] auto-complete failed:", e)
+          console.error("Auto-complete failed:", e)
         }
       }
     }
@@ -79,45 +77,204 @@ const TournamentStart = () => {
     }))
   }, [tournament])
 
-  const sendRoomDetails = () => {
-    if (!roomId || !roomPass) return alert("Enter Room ID and Password first.")
-    const emails = populatedParticipants.map((p) => p.email).filter(Boolean)
-    if (!emails.length) return alert("No participant emails found.")
-    const subject = encodeURIComponent(
-      `Room Details • ${tournament?.game?.toUpperCase() || "Tournament"} ${tournament?.t_id || id}`,
+  // ✅ SAVE ROOM CREDENTIALS
+  const handleSaveCredentials = () => {
+    if (!roomId.trim() || !roomPass.trim()) {
+      return toast.error("Please enter both Room ID and Password")
+    }
+    setSaved(true)
+    toast.success("Room credentials saved! Ready to send to players.")
+  }
+
+  // ✅ SEND TO ALL PARTICIPANTS
+  const sendRoomDetailsToAll = async () => {
+    if (!roomId || !roomPass) {
+      return toast.error("Please save room credentials first")
+    }
+
+    const validParticipants = populatedParticipants.filter((p) => p.email)
+    if (!validParticipants.length) {
+      return toast.error("No participants with valid emails found")
+    }
+
+    setSendingAll(true)
+    let successCount = 0
+    let failCount = 0
+
+    try {
+      // Send emails via backend API
+      for (const participant of validParticipants) {
+        try {
+          await axios.post(`http://localhost:5000/admin/tournaments/${id}/send-credentials`, {
+            roomId,
+            roomPass,
+            email: participant.email,
+            tournamentName: tournament?.game || "Tournament",
+            date: tournament?.t_date,
+            time: tournament?.t_time,
+          })
+          successCount++
+        } catch (err) {
+          console.error(`Failed to send to ${participant.email}:`, err)
+          failCount++
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`✅ Credentials sent to ${successCount} player${successCount > 1 ? 's' : ''}!`)
+      }
+      if (failCount > 0) {
+        toast.error(`❌ Failed to send to ${failCount} player${failCount > 1 ? 's' : ''}`)
+      }
+    } catch (error) {
+      console.error("Send all error:", error)
+      toast.error("Failed to send credentials. Please try again.")
+    } finally {
+      setSendingAll(false)
+    }
+  }
+
+  // ✅ SEND TO INDIVIDUAL PARTICIPANT
+  const sendToIndividual = async (participant) => {
+    if (!roomId || !roomPass) {
+      return toast.error("Please save room credentials first")
+    }
+
+    setSendingIndividual((prev) => ({ ...prev, [participant.id]: true }))
+
+    try {
+      await axios.post(`http://localhost:5000/admin/tournaments/${id}/send-credentials`, {
+        roomId,
+        roomPass,
+        email: participant.email,
+        tournamentName: tournament?.game || "Tournament",
+        date: tournament?.t_date,
+        time: tournament?.t_time,
+      })
+      toast.success(`✅ Sent to ${participant.name || participant.email}`)
+    } catch (error) {
+      console.error("Send individual error:", error)
+      toast.error(`❌ Failed to send to ${participant.name || participant.email}`)
+    } finally {
+      setSendingIndividual((prev) => ({ ...prev, [participant.id]: false }))
+    }
+  }
+
+  // ✅ COPY ROOM DETAILS TO CLIPBOARD
+  const copyToClipboard = () => {
+    const text = `🎮 ${tournament?.game?.toUpperCase() || "TOURNAMENT"} - Room Details
+
+🆔 Room ID: ${roomId}
+🔑 Password: ${roomPass}
+📅 Date: ${startTime ? new Date(tournament.t_date).toLocaleDateString() : "-"}
+⏰ Time: ${tournament?.t_time || "-"}
+
+Join on time! Good luck! 🏆`
+
+    navigator.clipboard.writeText(text).then(
+      () => toast.success("📋 Copied to clipboard!"),
+      () => toast.error("Failed to copy")
     )
-    const body = encodeURIComponent(
-      `Hello Player,%0A%0ARoom ID: ${roomId}%0APassword: ${roomPass}%0AStart Time: ${startTime?.toLocaleString() || "-"}%0A%0AAll the best!`,
-    )
-    window.location.href = `mailto:?bcc=${emails.join(",")}&subject=${subject}&body=${body}`
   }
 
   const isLoading = !withParts || !tournament
 
+  // ✅ STATUS BADGE COMPONENT
+  const StatusBadge = () => {
+    if (completed) {
+      return (
+        <div style={{
+          padding: "8px 16px",
+          borderRadius: "20px",
+          background: "rgba(144, 164, 174, 0.2)",
+          border: "1px solid #90A4AE",
+          color: "#90A4AE",
+          fontWeight: "bold",
+          fontSize: "0.9rem"
+        }}>
+          ✓ Completed
+        </div>
+      )
+    }
+    if (running) {
+      return (
+        <div style={{
+          padding: "8px 16px",
+          borderRadius: "20px",
+          background: "rgba(0, 200, 83, 0.2)",
+          border: "1px solid #00C853",
+          color: "#00C853",
+          fontWeight: "bold",
+          fontSize: "0.9rem",
+          animation: "pulse 2s infinite"
+        }}>
+          🟢 Live Now
+        </div>
+      )
+    }
+    return (
+      <div style={{
+        padding: "8px 16px",
+        borderRadius: "20px",
+        background: "rgba(255, 193, 7, 0.2)",
+        border: "1px solid #FFC107",
+        color: "#FFC107",
+        fontWeight: "bold",
+        fontSize: "0.9rem"
+      }}>
+        ⏳ Pending
+      </div>
+    )
+  }
+
   return (
-    <div style={{ padding: "1rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <h1 style={{ fontSize: "1.5rem", color: theme.colors.primary, textShadow: theme.shadows.titleGlow, margin: 0 }}>
-          Start Tournament • ID #{id}
-        </h1>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {running ? (
-            <span style={{ color: "#00C853", fontWeight: 600 }}>Running</span>
-          ) : completed ? (
-            <span style={{ color: "#90A4AE" }}>Completed</span>
-          ) : (
-            <span style={{ color: "#FFC107" }}>Pending</span>
-          )}
+    <div style={{ padding: "1rem", maxWidth: "1400px", margin: "0 auto" }}>
+      <Toaster position="top-right" reverseOrder={false} />
+      
+      {/* ✅ CSS for animations */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
+
+      {/* Header */}
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "space-between", 
+        alignItems: "center", 
+        marginBottom: "1.5rem",
+        flexWrap: "wrap",
+        gap: "1rem"
+      }}>
+        <div>
+          <h1 style={{ 
+            fontSize: "1.8rem", 
+            color: theme.colors.primary, 
+            textShadow: theme.shadows.titleGlow, 
+            margin: 0,
+            marginBottom: "0.5rem"
+          }}>
+            Start Tournament
+          </h1>
+          <p style={{ margin: 0, color: theme.colors.lightGray, fontSize: "0.9rem" }}>
+            Tournament ID: <strong style={{ color: theme.colors.secondary }}>#{id}</strong>
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+          <StatusBadge />
           <button
             onClick={() => navigate(-1)}
             style={{
-              padding: "8px 12px",
+              padding: "10px 16px",
               borderRadius: "8px",
               border: "none",
               background: theme.gradients.secondaryButton,
               color: theme.colors.white,
               cursor: "pointer",
               boxShadow: theme.shadows.buttonShadow,
+              fontWeight: "500"
             }}
           >
             ← Back
@@ -125,130 +282,493 @@ const TournamentStart = () => {
         </div>
       </div>
 
-      <div
-        style={{
+      {/* Tournament Info Card */}
+      {tournament && (
+        <div style={{
           background: theme.gradients.navbarAlt1,
           border: `1px solid ${theme.colors.primary}`,
-          borderRadius: 12,
-          padding: 16,
-          marginBottom: 16,
-        }}
-      >
-        <strong style={{ color: theme.colors.secondary, display: "block", marginBottom: 8 }}>Room Credentials</strong>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <input
-            placeholder="Room ID"
-            value={roomId}
-            onChange={(e) => setRoomId(e.target.value)}
-            style={{
-              padding: 10,
-              borderRadius: 8,
-              background: "#0f0f0f",
-              color: "#fff",
-              border: "1px solid #444",
-              minWidth: 220,
-            }}
-          />
-          <input
-            placeholder="Password"
-            value={roomPass}
-            onChange={(e) => setRoomPass(e.target.value)}
-            style={{
-              padding: 10,
-              borderRadius: 8,
-              background: "#0f0f0f",
-              color: "#fff",
-              border: "1px solid #444",
-              minWidth: 220,
-            }}
-          />
+          borderRadius: "12px",
+          padding: "1.5rem",
+          marginBottom: "1.5rem"
+        }}>
+          <h2 style={{ 
+            color: theme.colors.secondary, 
+            marginBottom: "1rem",
+            fontSize: "1.2rem"
+          }}>
+            📋 Tournament Information
+          </h2>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: "1rem"
+          }}>
+            <div>
+              <div style={{ color: theme.colors.lightGray, fontSize: "0.85rem", marginBottom: "0.25rem" }}>
+                Game
+              </div>
+              <div style={{ color: theme.colors.white, fontWeight: "bold", fontSize: "1.1rem" }}>
+                {tournament.game || "-"}
+              </div>
+            </div>
+            <div>
+              <div style={{ color: theme.colors.lightGray, fontSize: "0.85rem", marginBottom: "0.25rem" }}>
+                Map
+              </div>
+              <div style={{ color: theme.colors.white, fontWeight: "bold", fontSize: "1.1rem" }}>
+                {tournament.map || "-"}
+              </div>
+            </div>
+            <div>
+              <div style={{ color: theme.colors.lightGray, fontSize: "0.85rem", marginBottom: "0.25rem" }}>
+                Mode
+              </div>
+              <div style={{ color: theme.colors.white, fontWeight: "bold", fontSize: "1.1rem", textTransform: "capitalize" }}>
+                {tournament.mode_type || "Solo"}
+              </div>
+            </div>
+            <div>
+              <div style={{ color: theme.colors.lightGray, fontSize: "0.85rem", marginBottom: "0.25rem" }}>
+                Entry Fee
+              </div>
+              <div style={{ color: theme.colors.primary, fontWeight: "bold", fontSize: "1.1rem" }}>
+                ₹{tournament.entry_fee || 0}
+              </div>
+            </div>
+            <div>
+              <div style={{ color: theme.colors.lightGray, fontSize: "0.85rem", marginBottom: "0.25rem" }}>
+                Start Time
+              </div>
+              <div style={{ color: theme.colors.white, fontWeight: "bold", fontSize: "1.1rem" }}>
+                {startTime ? startTime.toLocaleString() : "-"}
+              </div>
+            </div>
+            <div>
+              <div style={{ color: theme.colors.lightGray, fontSize: "0.85rem", marginBottom: "0.25rem" }}>
+                End Time (40 min)
+              </div>
+              <div style={{ color: theme.colors.white, fontWeight: "bold", fontSize: "1.1rem" }}>
+                {endTime ? endTime.toLocaleString() : "-"}
+              </div>
+            </div>
+            <div>
+              <div style={{ color: theme.colors.lightGray, fontSize: "0.85rem", marginBottom: "0.25rem" }}>
+                Participants
+              </div>
+              <div style={{ color: theme.colors.secondary, fontWeight: "bold", fontSize: "1.1rem" }}>
+                {populatedParticipants.length} / 16
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Room Credentials Card */}
+      <div style={{
+        background: theme.gradients.navbarAlt1,
+        border: `2px solid ${saved ? theme.colors.secondary : theme.colors.primary}`,
+        borderRadius: "12px",
+        padding: "1.5rem",
+        marginBottom: "1.5rem"
+      }}>
+        <div style={{ 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: "center",
+          marginBottom: "1rem",
+          flexWrap: "wrap",
+          gap: "0.5rem"
+        }}>
+          <h2 style={{ 
+            color: theme.colors.secondary, 
+            margin: 0,
+            fontSize: "1.2rem"
+          }}>
+            🔑 Room Credentials
+          </h2>
+          {saved && (
+            <span style={{
+              padding: "4px 12px",
+              borderRadius: "12px",
+              background: "rgba(0, 200, 83, 0.2)",
+              border: "1px solid #00C853",
+              color: "#00C853",
+              fontSize: "0.85rem",
+              fontWeight: "bold"
+            }}>
+              ✓ Saved
+            </span>
+          )}
+        </div>
+
+        <div style={{ 
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+          gap: "1rem",
+          marginBottom: "1rem"
+        }}>
+          <div>
+            <label style={{ 
+              display: "block", 
+              marginBottom: "0.5rem",
+              color: theme.colors.lightGray,
+              fontSize: "0.9rem",
+              fontWeight: "500"
+            }}>
+              Room ID *
+            </label>
+            <input
+              placeholder="Enter Room ID"
+              value={roomId}
+              onChange={(e) => {
+                setRoomId(e.target.value)
+                if (saved) setSaved(false)
+              }}
+              style={{
+                padding: "12px",
+                borderRadius: "8px",
+                background: "#0f0f0f",
+                color: "#fff",
+                border: "1px solid #444",
+                width: "100%",
+                fontSize: "1rem",
+                outline: "none"
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ 
+              display: "block", 
+              marginBottom: "0.5rem",
+              color: theme.colors.lightGray,
+              fontSize: "0.9rem",
+              fontWeight: "500"
+            }}>
+              Password *
+            </label>
+            <input
+              placeholder="Enter Password"
+              value={roomPass}
+              onChange={(e) => {
+                setRoomPass(e.target.value)
+                if (saved) setSaved(false)
+              }}
+              style={{
+                padding: "12px",
+                borderRadius: "8px",
+                background: "#0f0f0f",
+                color: "#fff",
+                border: "1px solid #444",
+                width: "100%",
+                fontSize: "1rem",
+                outline: "none"
+              }}
+            />
+          </div>
+        </div>
+
+        <div style={{ 
+          display: "flex", 
+          gap: "0.75rem", 
+          flexWrap: "wrap" 
+        }}>
           {!saved ? (
             <button
-              onClick={() => setSaved(true)}
+              onClick={handleSaveCredentials}
               style={{
-                padding: "8px 12px",
+                padding: "12px 24px",
                 borderRadius: "8px",
                 border: "none",
                 background: theme.gradients.primaryButton,
                 color: theme.colors.white,
                 cursor: "pointer",
                 boxShadow: theme.shadows.buttonShadow,
+                fontWeight: "bold",
+                fontSize: "0.95rem"
               }}
             >
-              Save
+              💾 Save Credentials
             </button>
           ) : (
             <>
               <button
-                onClick={sendRoomDetails}
+                onClick={sendRoomDetailsToAll}
+                disabled={sendingAll}
                 style={{
-                  padding: "8px 12px",
+                  padding: "12px 24px",
                   borderRadius: "8px",
                   border: "none",
-                  background: theme.gradients.primaryButton,
+                  background: sendingAll ? "#666" : theme.gradients.primaryButton,
                   color: theme.colors.white,
-                  cursor: "pointer",
+                  cursor: sendingAll ? "not-allowed" : "pointer",
                   boxShadow: theme.shadows.buttonShadow,
+                  fontWeight: "bold",
+                  fontSize: "0.95rem",
+                  opacity: sendingAll ? 0.7 : 1
                 }}
               >
-                Send Details to Players (Email)
+                {sendingAll ? "📤 Sending..." : "📧 Send to All Players"}
               </button>
-              <span style={{ color: "#9CCC65" }}>Saved</span>
+              <button
+                onClick={copyToClipboard}
+                style={{
+                  padding: "12px 24px",
+                  borderRadius: "8px",
+                  border: `1px solid ${theme.colors.primary}`,
+                  background: "transparent",
+                  color: theme.colors.white,
+                  cursor: "pointer",
+                  fontWeight: "500",
+                  fontSize: "0.95rem"
+                }}
+              >
+                📋 Copy Details
+              </button>
             </>
           )}
         </div>
-        <div style={{ marginTop: 8, color: theme.colors.lightGray, fontSize: 12 }}>
-          Starts: {startTime ? startTime.toLocaleString() : "-"} • Ends: {endTime ? endTime.toLocaleString() : "-"} (40
-          min duration)
+
+        {!saved && (
+          <p style={{ 
+            marginTop: "0.75rem", 
+            color: theme.colors.lightGray, 
+            fontSize: "0.85rem",
+            margin: "0.75rem 0 0 0"
+          }}>
+            💡 Save credentials first before sending to players
+          </p>
+        )}
+      </div>
+
+      {/* Participants Table */}
+      <div style={{
+        background: theme.gradients.navbarAlt1,
+        border: `1px solid ${theme.colors.primary}`,
+        borderRadius: "12px",
+        overflow: "hidden"
+      }}>
+        <div style={{ 
+          padding: "1rem 1.5rem", 
+          borderBottom: `1px solid ${theme.colors.primary}`,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "0.5rem"
+        }}>
+          <h2 style={{ 
+            color: theme.colors.secondary, 
+            margin: 0,
+            fontSize: "1.2rem"
+          }}>
+            👥 Registered Participants
+          </h2>
+          <div style={{
+            padding: "6px 12px",
+            borderRadius: "12px",
+            background: "rgba(0, 255, 204, 0.1)",
+            border: "1px solid rgba(0, 255, 204, 0.3)",
+            color: theme.colors.primary,
+            fontSize: "0.9rem",
+            fontWeight: "bold"
+          }}>
+            {populatedParticipants.length} / 16 Players
+          </div>
+        </div>
+
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ 
+            width: "100%", 
+            minWidth: "700px", 
+            borderCollapse: "collapse" 
+          }}>
+            <thead>
+              <tr style={{ 
+                background: "rgba(0, 255, 204, 0.05)",
+                borderBottom: `2px solid ${theme.colors.primary}`
+              }}>
+                <th style={{ 
+                  padding: "12px 16px", 
+                  textAlign: "left",
+                  color: theme.colors.primary,
+                  fontWeight: "600",
+                  fontSize: "0.9rem"
+                }}>
+                  #
+                </th>
+                <th style={{ 
+                  padding: "12px 16px", 
+                  textAlign: "left",
+                  color: theme.colors.primary,
+                  fontWeight: "600",
+                  fontSize: "0.9rem"
+                }}>
+                  Team Name
+                </th>
+                <th style={{ 
+                  padding: "12px 16px", 
+                  textAlign: "left",
+                  color: theme.colors.primary,
+                  fontWeight: "600",
+                  fontSize: "0.9rem"
+                }}>
+                  Player Name
+                </th>
+                <th style={{ 
+                  padding: "12px 16px", 
+                  textAlign: "left",
+                  color: theme.colors.primary,
+                  fontWeight: "600",
+                  fontSize: "0.9rem"
+                }}>
+                  Username
+                </th>
+                <th style={{ 
+                  padding: "12px 16px", 
+                  textAlign: "left",
+                  color: theme.colors.primary,
+                  fontWeight: "600",
+                  fontSize: "0.9rem"
+                }}>
+                  Email
+                </th>
+                <th style={{ 
+                  padding: "12px 16px", 
+                  textAlign: "center",
+                  color: theme.colors.primary,
+                  fontWeight: "600",
+                  fontSize: "0.9rem"
+                }}>
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {!isLoading && populatedParticipants.length === 0 ? (
+                <tr>
+                  <td 
+                    colSpan={6} 
+                    style={{ 
+                      padding: "3rem", 
+                      textAlign: "center",
+                      color: theme.colors.lightGray 
+                    }}
+                  >
+                    <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>😔</div>
+                    <div style={{ fontSize: "1.1rem" }}>No participants joined yet.</div>
+                    <div style={{ fontSize: "0.9rem", marginTop: "0.5rem" }}>
+                      Players will appear here once they register.
+                    </div>
+                  </td>
+                </tr>
+              ) : populatedParticipants.length ? (
+                populatedParticipants.map((p, index) => (
+                  <tr 
+                    key={p.id} 
+                    style={{ 
+                      borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+                      transition: "background 0.2s ease"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "rgba(0, 255, 204, 0.03)"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                  >
+                    <td style={{ 
+                      padding: "12px 16px",
+                      color: theme.colors.lightGray,
+                      fontWeight: "500"
+                    }}>
+                      {index + 1}
+                    </td>
+                    <td style={{ 
+                      padding: "12px 16px",
+                      color: theme.colors.white,
+                      fontWeight: "600"
+                    }}>
+                      {p.team_name || "-"}
+                    </td>
+                    <td style={{ 
+                      padding: "12px 16px",
+                      color: theme.colors.white 
+                    }}>
+                      {p.name || "-"}
+                    </td>
+                    <td style={{ 
+                      padding: "12px 16px",
+                      color: theme.colors.secondary 
+                    }}>
+                      @{p.username || "-"}
+                    </td>
+                    <td style={{ 
+                      padding: "12px 16px",
+                      color: theme.colors.lightGray,
+                      fontSize: "0.9rem"
+                    }}>
+                      {p.email || "-"}
+                    </td>
+                    <td style={{ 
+                      padding: "12px 16px",
+                      textAlign: "center"
+                    }}>
+                      {saved && p.email && (
+                        <button
+                          onClick={() => sendToIndividual(p)}
+                          disabled={sendingIndividual[p.id]}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: "6px",
+                            border: "none",
+                            background: sendingIndividual[p.id] ? "#666" : theme.colors.secondary,
+                            color: "#fff",
+                            cursor: sendingIndividual[p.id] ? "not-allowed" : "pointer",
+                            fontSize: "0.8rem",
+                            fontWeight: "500",
+                            opacity: sendingIndividual[p.id] ? 0.6 : 1
+                          }}
+                        >
+                          {sendingIndividual[p.id] ? "Sending..." : "📧 Send"}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                // Loading state
+                Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={6} style={{ 
+                      padding: "12px 16px", 
+                      color: theme.colors.lightGray,
+                      textAlign: "center"
+                    }}>
+                      Loading participants...
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <div
-        style={{
-          background: theme.colors.navbarDark,
-          borderRadius: 12,
-          overflowX: "auto",
-          opacity: saved ? 1 : 0.5,
-          pointerEvents: saved ? "auto" : "none",
-        }}
-      >
-        <table style={{ width: "100%", minWidth: 700, borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ background: theme.colors.primary, color: "#000" }}>
-              <th style={{ padding: 10, textAlign: "left" }}>Team</th>
-              <th style={{ padding: 10, textAlign: "left" }}>Name</th>
-              <th style={{ padding: 10, textAlign: "left" }}>Username</th>
-              <th style={{ padding: 10, textAlign: "left" }}>Email</th>
-            </tr>
-          </thead>
-          <tbody>
-            {!isLoading && populatedParticipants.length === 0 ? (
-              <tr>
-                <td colSpan={4} style={{ padding: 12, color: "gray" }}>
-                  No participants joined yet.
-                </td>
-              </tr>
-            ) : populatedParticipants.length ? (
-              populatedParticipants.map((p) => (
-                <tr key={p.id} style={{ borderBottom: "1px solid #333" }}>
-                  <td style={{ padding: 10 }}>{p.team_name}</td>
-                  <td style={{ padding: 10 }}>{p.name}</td>
-                  <td style={{ padding: 10 }}>{p.username}</td>
-                  <td style={{ padding: 10 }}>{p.email}</td>
-                </tr>
-              ))
-            ) : (
-              Array.from({ length: 4 }).map((_, i) => (
-                <tr key={i}>
-                  <td style={{ padding: 10, color: "gray" }}>Loading…</td>
-                  <td style={{ padding: 10, color: "gray" }}>Loading…</td>
-                  <td style={{ padding: 10, color: "gray" }}>Loading…</td>
-                  <td style={{ padding: 10, color: "gray" }}>Loading…</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      {/* Info Footer */}
+      <div style={{
+        marginTop: "1.5rem",
+        padding: "1rem",
+        background: "rgba(0, 119, 255, 0.05)",
+        border: "1px solid rgba(0, 119, 255, 0.2)",
+        borderRadius: "8px",
+        color: theme.colors.lightGray,
+        fontSize: "0.9rem",
+        lineHeight: "1.6"
+      }}>
+        <strong style={{ color: theme.colors.secondary }}>💡 Pro Tips:</strong>
+        <ul style={{ margin: "0.5rem 0 0 0", paddingLeft: "1.5rem" }}>
+          <li>Enter Room ID and Password, then click "Save Credentials"</li>
+          <li>Send credentials to all players at once or individually</li>
+          <li>Use "Copy Details" to paste in WhatsApp/Discord groups</li>
+          <li>Tournament auto-completes 40 minutes after start time</li>
+          <li>Participants receive professional email with tournament details</li>
+        </ul>
       </div>
     </div>
   )

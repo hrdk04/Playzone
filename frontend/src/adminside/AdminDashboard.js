@@ -34,6 +34,11 @@ export default function AdminDashboard({ isMobile = false }) {
   const [liveNotifications, setLiveNotifications] = useState([]);
   const [selectedSuggestions, setSelectedSuggestions] = useState({});
   const [isProcessingSuggestions, setIsProcessingSuggestions] = useState(false);
+  
+  // ✅ NEW: Contact/Support Stats
+  const [contactStats, setContactStats] = useState({ total: 0, pending: 0, resolved: 0 });
+  const [recentContacts, setRecentContacts] = useState([]);
+  const [previousPendingCount, setPreviousPendingCount] = useState(0);
 
   const { data: dashData, isLoading } = useSWR("http://localhost:5000/admin/dashboard", fetcher);
 
@@ -76,6 +81,61 @@ export default function AdminDashboard({ isMobile = false }) {
     fetchAiTips();
   }, [dashData]);
 
+  // ✅ NEW: Fetch Contact/Support Messages
+  useEffect(() => {
+    const fetchContactStats = async () => {
+      try {
+        const { data } = await axios.get("http://localhost:5000/admin/contacts?status=all");
+        
+        const newStats = {
+          total: data.stats?.total || 0,
+          pending: data.stats?.pending || 0,
+          resolved: data.stats?.resolved || 0,
+        };
+        
+        setContactStats(newStats);
+        
+        // Get recent pending contacts
+        const pendingContacts = (data.contacts || [])
+          .filter(c => c.status === "pending")
+          .slice(0, 5);
+        setRecentContacts(pendingContacts);
+
+        // ✅ Check for NEW pending contacts
+        if (previousPendingCount > 0 && newStats.pending > previousPendingCount) {
+          const newCount = newStats.pending - previousPendingCount;
+          toast.success(
+            `🔔 ${newCount} new support request${newCount > 1 ? 's' : ''} received!`,
+            {
+              duration: 5000,
+              style: {
+                background: '#4ecdc4',
+                color: '#fff',
+                fontWeight: 'bold',
+              },
+              icon: '💬',
+            }
+          );
+
+          // Play notification sound (optional)
+          // const audio = new Audio('/notification.mp3');
+          // audio.play().catch(err => console.log('Audio play failed:', err));
+        }
+
+        setPreviousPendingCount(newStats.pending);
+
+      } catch (err) {
+        console.error("Error fetching contact stats:", err);
+      }
+    };
+
+    fetchContactStats();
+    
+    // Poll every 30 seconds for new contacts
+    const interval = setInterval(fetchContactStats, 30000);
+    return () => clearInterval(interval);
+  }, [previousPendingCount]);
+
   // ------------------------------
   // Live Notifications
   // ------------------------------
@@ -93,8 +153,7 @@ export default function AdminDashboard({ isMobile = false }) {
             ? { background: "#ffc107", color: "#000" }
             : { background: "#4ecdc4", color: "#fff" };
 
-            if (notification.type !== 'warning') return toast(notification.message, { duration: 5000, style });
-          
+          if (notification.type !== 'warning') return toast(notification.message, { duration: 5000, style });
         });
       } catch (err) {
         console.error(err);
@@ -177,9 +236,32 @@ export default function AdminDashboard({ isMobile = false }) {
     border: `1px solid ${theme.colors.primary}`,
   };
 
+  // ✅ Special style for pending contacts (with pulse animation)
+  const contactPanelStyle = {
+    ...panelStyle,
+    border: contactStats.pending > 0 ? `2px solid #ffc107` : `1px solid ${theme.colors.primary}`,
+    animation: contactStats.pending > 0 ? 'pulse 2s infinite' : 'none',
+  };
+
   return (
     <div style={{ padding: isMobile ? "1rem" : "20px", backgroundColor: theme.colors.backgroundColor, color: theme.colors.white, minHeight: "100vh", fontFamily: theme.fonts.primary }}>
       <Toaster position="top-right" reverseOrder={false} />
+      
+      {/* ✅ Add CSS for pulse animation */}
+      <style>{`
+        @keyframes pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+          }
+          50% {
+            box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+          }
+        }
+      `}</style>
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <h1 style={{ fontSize: isMobile ? "1.8rem" : "2.5rem", textShadow: theme.shadows.headerGlow, color: theme.colors.primary, margin: 0 }}>
           Admin Dashboard
@@ -208,34 +290,154 @@ export default function AdminDashboard({ isMobile = false }) {
               <p>Admin Profit</p>
             </div>
 
-             <div style={{ ...panelStyle, minHeight: "400px", overflowY: "auto" }}>
+            {/* ✅ NEW: Support Requests Panel */}
+            <div 
+              style={contactPanelStyle}
+              onClick={() => navigate("/admin/contacts")}
+            >
+              <div style={{ 
+                position: 'relative', 
+                display: 'inline-block',
+                marginBottom: '10px'
+              }}>
+                <h2 style={{ 
+                  fontSize: '2rem', 
+                  color: contactStats.pending > 0 ? '#ffc107' : theme.colors.white,
+                  margin: 0
+                }}>
+                  {contactStats.pending}
+                </h2>
+                {contactStats.pending > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-5px',
+                    right: '-10px',
+                    background: '#ff4c4c',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    width: '20px',
+                    height: '20px',
+                    fontSize: '0.7rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 'bold',
+                    animation: 'pulse 1.5s infinite'
+                  }}>
+                    !
+                  </span>
+                )}
+              </div>
+              <p style={{ 
+                fontWeight: contactStats.pending > 0 ? 'bold' : 'normal',
+                color: contactStats.pending > 0 ? '#ffc107' : theme.colors.lightGray
+              }}>
+                💬 Pending Support Requests
+              </p>
+              {contactStats.pending > 0 && (
+                <p style={{ 
+                  fontSize: '0.85rem', 
+                  color: '#ffc107',
+                  marginTop: '5px'
+                }}>
+                  Click to respond →
+                </p>
+              )}
+            </div>
+
+            {/* AI + Live Alerts */}
+            <div style={{ ...panelStyle, minHeight: "400px", overflowY: "auto" }}>
               <h2>🤖 AI Assistant & Live Alerts</h2>
+              
+              {/* ✅ Show Recent Support Requests in AI Panel */}
+              {recentContacts.length > 0 && (
+                <div style={{ 
+                  padding: 12, 
+                  marginTop: 10, 
+                  background: "rgba(255, 193, 7, 0.1)", 
+                  borderRadius: 8,
+                  border: "1px solid #ffc107",
+                  textAlign: 'left'
+                }}>
+                  <div style={{ 
+                    fontSize: '0.9rem', 
+                    fontWeight: "bold", 
+                    color: "#ffc107", 
+                    marginBottom: 8 
+                  }}>
+                    💬 Recent Support Requests ({recentContacts.length})
+                  </div>
+                  {recentContacts.slice(0, 3).map((contact, idx) => (
+                    <div 
+                      key={idx} 
+                      style={{ 
+                        fontSize: '0.8rem',
+                        padding: '6px',
+                        marginBottom: '6px',
+                        background: 'rgba(0,0,0,0.2)',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate("/admin/contacts");
+                      }}
+                    >
+                      <div style={{ fontWeight: 'bold', color: '#00ffcc' }}>
+                        {contact.subject}
+                      </div>
+                      <div style={{ color: theme.colors.lightGray, fontSize: '0.75rem' }}>
+                        From: {contact.name} • {new Date(contact.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                  {recentContacts.length > 3 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate("/admin/contacts");
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '6px',
+                        marginTop: '8px',
+                        background: '#ffc107',
+                        color: '#000',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      View All ({contactStats.pending})
+                    </button>
+                  )}
+                </div>
+              )}
+
               {aiTips.length > 0 && aiTips.map((tip, i) => (
-                <div key={i} style={{ padding: 8, marginTop: 6, borderLeft: `4px solid ${tip.type === "warning" ? "#ffc107" : tip.type === "success" ? "#00c9a7" : "#007bff"}`, background: "rgba(255,255,255,0.05)" }}>
+                <div key={i} style={{ padding: 8, marginTop: 6, borderLeft: `4px solid ${tip.type === "warning" ? "#ffc107" : tip.type === "success" ? "#00c9a7" : "#007bff"}`, background: "rgba(255,255,255,0.05)", textAlign: 'left' }}>
                   <strong>{tip.title}</strong>
-                  <p>{tip.message}</p>
+                  <p style={{ fontSize: '0.85rem', margin: '4px 0' }}>{tip.message}</p>
                 </div>
               ))}
-
-              
             </div>
+
             <div style={panelStyle}>
-             
               {liveNotifications.length > 0 && (
                 <div style={{ marginTop: 12, padding: 8, background: "rgba(255,0,0,0.1)", borderRadius: 6, border: "1px solid #ff6b6b" }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: "bold", color: "#ff6b6b", marginBottom: 4 }}>🔔 Live Alerts ({liveNotifications.length})</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: "bold", color: "#ff6b6b", marginBottom: 4 }}>
+                    🔔 Live Alerts ({liveNotifications.length})
+                  </div>
                   {liveNotifications.map((notif, idx) => (
-                    <div key={idx} style={{ fontSize: '1.2rem', textAlign:'justify',padding:'10px', color: notif.type === "critical" ? "#ff4c4c" : notif.type === "warning" ? "#ffc107" : "#4ecdc4", marginBottom: 2 }}>
+                    <div key={idx} style={{ fontSize: '1.2rem', textAlign:'justify', padding:'10px', color: notif.type === "critical" ? "#ff4c4c" : notif.type === "warning" ? "#ffc107" : "#4ecdc4", marginBottom: 2 }}>
                       • {notif.message}
-                      {/* {console.log(notif.message)} */}
                     </div>
                   ))}
                 </div>
               )}
             </div>
-
-            {/* AI + Live Alerts */}
-           
           </>
         )}
       </div>
@@ -259,7 +461,7 @@ export default function AdminDashboard({ isMobile = false }) {
         {/* Top Games */}
         <div style={{ background: theme.gradients.navbarAlt1, borderRadius: 12, padding: isMobile ? "1rem" : "20px", border: `1px solid ${theme.colors.primary}` }}>
           <h3 style={{ marginBottom: 15, color: theme.colors.secondary }}>Top Games Played</h3>
-          <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
+          <ResponsiveContainer width="100%" height={isMobile ? 250 : 320}>
             <PieChart>
               <Pie data={topGames || []} dataKey="count" nameKey="game" outerRadius={120} fill={theme.colors.primary} label />
               <Legend />
@@ -284,16 +486,16 @@ export default function AdminDashboard({ isMobile = false }) {
             <tbody>
               {recentTransactions.slice(0, 5).map((tx, i) => (
                 <tr key={i} style={{ borderBottom: "1px solid #333" }}>
-                  <td>₹{Number(tx.amount).toFixed(2)}</td>
-                  <td>{tx.type}</td>
-                  <td>{new Date(tx.date).toLocaleString()}</td>
+                  <td style={{textAlign:'center',}}>₹{Number(tx.amount).toFixed(2)}</td>
+                  <td style={{textAlign:'center',}}>{tx.type}</td>
+                  <td style={{textAlign:'center',}}>{new Date(tx.date).toLocaleString()}</td>
                 </tr>
               ))}
               {!recentTransactions.length && <tr><td colSpan={3}>No transactions yet.</td></tr>}
             </tbody>
           </table>
         </div>
-        {recentTransactions.length > 5 && (
+        {recentTransactions.length > 10 && (
           <div style={{ marginTop: 10, textAlign: "right" }}>
             <button style={{ padding: "6px 12px", backgroundColor: theme.colors.primary, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }} onClick={() => navigate("/admin/transactions")}>
               View All
@@ -304,3 +506,4 @@ export default function AdminDashboard({ isMobile = false }) {
     </div>
   );
 }
+

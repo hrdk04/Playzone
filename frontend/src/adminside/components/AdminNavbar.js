@@ -81,7 +81,7 @@ const AdminNavbar = ({ onMenuClick, isMobile }) => {
           }}
           aria-label="Logout"
         >
-          {isMobile ? "Exit" : "Logout"}
+          {isMobile ? "Logout" : "Logout"}
         </button>
       </div>
     </nav>

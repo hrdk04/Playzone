@@ -259,7 +259,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
               />
             </div>
 
-            <div>
+            {/* <div>
               <label style={{ display: "block", marginBottom: "0.5rem", color: theme.colors.lightGray }}>
                 Account Created
               </label>
@@ -277,7 +277,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
                   cursor: "not-allowed"
                 }}
               />
-            </div>
+            </div> */}
 
             <div>
               <label style={{ display: "block", marginBottom: "0.5rem", color: theme.colors.lightGray }}>

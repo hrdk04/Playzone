@@ -93,6 +93,18 @@ const AdminSidebar = ({ isOpen, onClose, isMobile }) => {
           👥 Players
         </Link>
 
+        {/* CONTACT MESSAGES - NEW */}
+        <Link
+          to="/admin/contacts"
+          style={linkStyle(
+            location.pathname.startsWith("/admin/contacts"),
+            isMobile
+          )}
+          onClick={() => isMobile && onClose()}
+        >
+          💬 Contact Messages
+        </Link>
+
         {/* SETTINGS */}
         <Link
           to="/admin/notifications"

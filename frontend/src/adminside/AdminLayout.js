@@ -9,6 +9,7 @@ import AdminSidebar from "./components/AdminSidebar";
 import TournamentStart from "./TournamentStart";
 import TournamentForm from "./TournamentForm";
 import TournamentResults from "./TournamentResults";
+import ManageContacts from "./ManageContacts";
 import AdminProfile from "./components/AdminNotificationSettings";
 import { SWRConfig } from "swr";
 import axios from "axios";
@@ -18,6 +19,32 @@ const AdminLayout = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
+  const [adminUsername, setAdminUsername] = useState(""); // ✅ New state
+
+  // ✅ Extract username once on mount
+  useEffect(() => {
+    const adminName = localStorage.getItem("adminName");
+    const adminData = localStorage.getItem("admin");
+    
+    let username = "";
+    
+    // Try adminName first (simple string)
+    if (adminName) {
+      username = adminName;
+    } 
+    // Fallback: parse admin object
+    else if (adminData) {
+      try {
+        const parsed = JSON.parse(adminData);
+        username = parsed.username || "";
+      } catch (e) {
+        console.error("Failed to parse admin data:", e);
+      }
+    }
+    
+    console.log("🎯 Admin username extracted:", username); // Debug
+    setAdminUsername(username);
+  }, []);
 
   useEffect(() => {
     const handleResize = () => setScreenWidth(window.innerWidth);
@@ -36,7 +63,7 @@ const AdminLayout = () => {
       style={{
         display: "flex",
         minHeight: "100vh",
-        overflowX: "hidden", // prevent horizontal scroll
+        overflowX: "hidden",
         background: theme.gradients.homeBackground,
         color: theme.colors.white,
         fontFamily: theme.fonts.primary,
@@ -69,7 +96,7 @@ const AdminLayout = () => {
       {/* Main Content */}
       <div
         style={{
-          flex: 1, // takes remaining space automatically
+          flex: 1,
           display: "flex",
           flexDirection: "column",
           minHeight: "100vh",
@@ -90,7 +117,7 @@ const AdminLayout = () => {
             padding: isMobile ? "1rem" : isTablet ? "1.5rem" : "2rem",
             paddingTop: isMobile ? "calc(64px + 1rem)" : "calc(64px + 2rem)",
             width: "100%",
-            maxWidth: "100%", // prevent overflow
+            maxWidth: "100%",
             boxSizing: "border-box",
             background:
               "radial-gradient(circle at 50% 0%, rgba(13,13,13,0.95), rgba(7,7,7,0.98))",
@@ -119,7 +146,18 @@ const AdminLayout = () => {
               <Route path="tournaments/:id/start" element={<TournamentStart isMobile={isMobile || isTablet} />} />
               <Route path="tournaments/:id/results" element={<TournamentResults isMobile={isMobile || isTablet} />} />
               <Route path="players" element={<AdminPlayers isMobile={isMobile || isTablet} />} />
-              <Route path="notifications" element={<AdminProfile username={localStorage.getItem("admin")} isMobile={isMobile || isTablet} />} />
+              <Route path="contacts" element={<ManageContacts isMobile={isMobile || isTablet} />} />
+              
+              {/* ✅ FIXED: Pass clean username string instead of JSON object */}
+              <Route 
+                path="notifications" 
+                element={
+                  <AdminProfile 
+                    username={adminUsername} 
+                    isMobile={isMobile || isTablet} 
+                  />
+                } 
+              />
             </Routes>
           </SWRConfig>
         </main>

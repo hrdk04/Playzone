@@ -3,6 +3,7 @@
 // src/userSide/History.js
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import toast, { Toaster } from "react-hot-toast"
 import theme from "../theme"
 import UserSideNav from "./UserSideNav"
 import axios from "axios"
@@ -30,7 +31,10 @@ const History = () => {
             user = res.data
           }
         }
-        if (!user?._id) return
+        if (!user?._id) {
+          toast.error("User not found. Please login again.")
+          return
+        }
 
         const tRes = await axios.get(`http://localhost:5000/tournaments/joined/${user._id}`)
         const completed = (tRes.data || []).filter((t) => String(t.t_status).toLowerCase() === "completed")
@@ -56,8 +60,12 @@ const History = () => {
         }))
 
         setHistoryData(mapped)
+        toast.success(`${mapped.length} completed tournaments loaded`,{
+  position: 'top-right'
+} )
       } catch (e) {
         console.error("History load error:", e)
+        toast.error("Failed to load tournament history")
       } finally {
         setLoading(false)
       }
@@ -79,7 +87,7 @@ const History = () => {
     switch (result.toLowerCase()) {
       case "winner":
         return "#FFD700" // Gold
-      case "2nd Place":
+      case "2nd place":
         return "#C0C0C0" // Silver
       case "3rd place":
         return "#CD7F32" // Bronze
@@ -89,86 +97,67 @@ const History = () => {
   }
 
   return (
-    <div
-      style={{
-        padding: "20px",
-        // maxWidth: '1200px',
-        margin: "0 auto",
-        backgroundColor: theme.colors.backgroundColor,
-        minHeight: "100vh",
-        color: theme.colors.white,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", marginBottom: "40px", position: "relative" }}>
-        <UserSideNav />
-        <button
-          onClick={() => {
-            navigate(-1)
-          }}
-          style={{
-            padding: "10px 20px",
-            borderRadius: "6px",
-            marginTop: "50px",
-            background: theme.gradients.secondaryButton,
-            color: theme.colors.white,
-            cursor: "pointer",
+    <div style={styles.container}>
+      {/* Toast Container */}
+      <Toaster
+        position="top-center"
+        reverseOrder={false}
+        containerStyle={{
+          top: 80,
+          zIndex: 99999,
+        }}
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: "linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)",
+            color: "#fff",
+            border: "2px solid rgba(255,255,255,0.15)",
+            padding: "16px 20px",
+            borderRadius: "12px",
+            fontSize: "14px",
             fontFamily: theme.fonts.primary,
-            fontSize: "1rem",
-            boxShadow: theme.shadows.buttonShadow,
-            transition: theme.animations.transition,
-            border: "none",
-            position: "absolute",
-            right: "50px",
-          }}
-        >
+            boxShadow: "0 10px 40px rgba(0,0,0,0.8)",
+            maxWidth: "90vw",
+            minWidth: "280px",
+          },
+          success: {
+            style: {
+              background: "linear-gradient(135deg, #1a3a1a 0%, #0d1f0d 100%)",
+              border: "2px solid rgba(76, 175, 80, 0.4)",
+            },
+            iconTheme: {
+              primary: "#4caf50",
+              secondary: "#fff",
+            },
+          },
+          error: {
+            style: {
+              background: "linear-gradient(135deg, #3a1a1a 0%, #1f0d0d 100%)",
+              border: "2px solid rgba(244, 67, 54, 0.4)",
+            },
+            iconTheme: {
+              primary: "#f44336",
+              secondary: "#fff",
+            },
+          },
+        }}
+      />
+
+      <UserSideNav />
+
+      {/* Header Section */}
+      <div style={styles.header}>
+        <button onClick={() => navigate(-1)} style={styles.backButton}>
           ← Back
         </button>
       </div>
 
       {/* Title */}
-      <h1
-        style={{
-          fontSize: "2.5rem",
-          marginTop: "5rem",
-          color: theme.colors.primary,
-          textAlign: "center",
-          textShadow: theme.shadows.headerGlow,
-        }}
-      >
-        Tournament History
-      </h1>
+      <h1 style={styles.title}>🏆 Tournament History</h1>
 
       {/* Filters Section */}
-      <div
-        style={{
-          background: "rgba(10, 10, 10, 0.6)",
-          width: "80%",
-          padding: "20px",
-          //   borderRadius: '12px',
-          marginBottom: "2rem",
-          margin: "0 auto",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "20px",
-          border: `1px solid ${theme.colors.secondary}`,
-          borderRadius: "6px",
-          boxShadow: "0 0 16px rgba(0, 255, 224, 0.2)",
-        }}
-      >
-        {/* Game type filter */}
-        <select
-          value={gameType}
-          onChange={(e) => setGameType(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: "200px",
-            padding: "10px",
-            borderRadius: "8px",
-            backgroundColor: theme.colors.navbarDark,
-            border: `1px solid ${theme.colors.primary}`,
-            color: theme.colors.white,
-          }}
-        >
+      <div style={styles.filtersContainer}>
+        <select value={gameType} onChange={(e) => setGameType(e.target.value)} style={styles.filterInput}>
           <option value="all">All Games</option>
           <option value="BGMI">BGMI</option>
           <option value="COD">CALL OF DUTY</option>
@@ -176,143 +165,76 @@ const History = () => {
           <option value="FREE FIRE">FREE FIRE</option>
         </select>
 
-        {/* Date filter */}
         <input
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: "200px",
-            padding: "10px",
-            borderRadius: "8px",
-            backgroundColor: theme.colors.navbarDark,
-            border: `1px solid ${theme.colors.primary}`,
-            color: theme.colors.white,
-          }}
+          style={styles.filterInput}
         />
 
-        {/* Result filter */}
-        <select
-          value={resultFilter}
-          onChange={(e) => setResultFilter(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: "200px",
-            padding: "10px",
-            borderRadius: "8px",
-            backgroundColor: theme.colors.navbarDark,
-            border: `1px solid ${theme.colors.primary}`,
-            color: theme.colors.white,
-          }}
-        >
+        <select value={resultFilter} onChange={(e) => setResultFilter(e.target.value)} style={styles.filterInput}>
           <option value="all">All Results</option>
           <option value="winner">Winners</option>
-          <option value="2nd Place">2nd place</option>
+          <option value="2nd place">2nd Place</option>
           <option value="3rd place">3rd Place</option>
-          {/* <option value="participant">Participants</option> */}
         </select>
 
-        {/* Search */}
         <input
           type="text"
           placeholder="Search tournaments..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: "200px",
-            padding: "10px",
-            borderRadius: "8px",
-            backgroundColor: theme.colors.navbarDark,
-            border: `1px solid ${theme.colors.primary}`,
-            color: theme.colors.white,
-          }}
+          style={styles.searchInput}
         />
       </div>
 
       {/* Cards Section */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-          gap: "20px",
-          margin: "3% 9%",
-        }}
-      >
+      <div style={styles.cardsGrid}>
         {loading ? (
-          <div style={{ textAlign: "center", marginTop: "2rem", color: theme.colors.lightGray }}>
-            <h2>Loading...</h2>
+          <div style={styles.loadingContainer}>
+            <div style={styles.spinner}></div>
+            <h2 style={styles.loadingText}>Loading tournament history...</h2>
           </div>
         ) : filteredHistory.length > 0 ? (
           filteredHistory.map((tournament) => (
-            <div
-              key={tournament.id}
-              style={{
-                backgroundColor: theme.colors.navbarDark,
-                borderRadius: "12px",
-                padding: "20px",
-                border: `1px solid ${theme.colors.primary}`,
-                boxShadow: "0 0 16px rgba(255, 0, 127, 0.1)",
-                transition: "all 0.3s ease",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "15px",
-                }}
-              >
-                <h3 style={{ margin: 0, color: theme.colors.secondary }}>{tournament.tournamentName}</h3>
+            <div key={tournament.id} style={styles.card}>
+              <div style={styles.cardHeader}>
+                <h3 style={styles.cardTitle}>{tournament.tournamentName}</h3>
                 <span
                   style={{
-                    padding: "4px 12px",
-                    borderRadius: "20px",
+                    ...styles.resultBadge,
                     backgroundColor: getResultColor(tournament.result),
-                    color: "white",
-                    fontSize: "0.875rem",
-                    fontWeight: "bold",
                   }}
                 >
                   {tournament.result}
                 </span>
               </div>
 
-              <p style={{ margin: "5px 0", color: theme.colors.lightGray }}>🎮 {tournament.game}</p>
-              <p style={{ margin: "5px 0", color: theme.colors.lightGray }}>
-                📅 {new Date(tournament.date).toLocaleDateString()}
-              </p>
+              <div style={styles.cardBody}>
+                <p style={styles.cardInfo}>
+                  <span style={styles.icon}>🎮</span> {tournament.game}
+                </p>
+                <p style={styles.cardInfo}>
+                  <span style={styles.icon}>📅</span> {new Date(tournament.date).toLocaleDateString()}
+                </p>
 
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  color: theme.colors.lightGray,
-                  fontSize: "0.875rem",
-                }}
-              >
-                <p>Prize Won: {tournament.prizeWon}</p>
-                <p>Entry Fee: ₹{tournament.entryFee}</p>
-                {/* <p>Participants: {tournament.participants}</p> */}
+                <div style={styles.cardStats}>
+                  <div style={styles.statItem}>
+                    <span style={styles.statLabel}>Prize Won</span>
+                    <span style={styles.statValue}>{tournament.prizeWon}</span>
+                  </div>
+                  <div style={styles.statItem}>
+                    <span style={styles.statLabel}>Entry Fee</span>
+                    <span style={styles.statValue}>₹{tournament.entryFee}</span>
+                  </div>
+                </div>
               </div>
 
-              {/* View Results Button */}
               {tournament.resultPublished && (
-                <div style={{ marginTop: "15px", textAlign: "center" }}>
+                <div style={styles.cardFooter}>
                   <button
                     onClick={() => navigate(`/tournaments/results/${tournament.tournamentName}`)}
-                    style={{
-                      padding: "8px 16px",
-                      borderRadius: "6px",
-                      border: "none",
-                      background: theme.gradients.primaryButton,
-                      color: theme.colors.white,
-                      cursor: "pointer",
-                      boxShadow: theme.shadows.buttonShadow,
-                      fontWeight: 600,
-                      fontSize: "0.9rem"
-                    }}
+                    style={styles.viewResultsButton}
                   >
                     🏆 View Results
                   </button>
@@ -321,8 +243,14 @@ const History = () => {
             </div>
           ))
         ) : (
-          <div style={{ textAlign: "center", marginTop: "2rem", color: theme.colors.lightGray }}>
-            <h2>No tournament history found matching your filters</h2>
+          <div style={styles.emptyState}>
+            <span style={styles.emptyIcon}>📭</span>
+            <h2 style={styles.emptyTitle}>No Tournament History Found</h2>
+            <p style={styles.emptyText}>
+              {historyData.length === 0
+                ? "You haven't completed any tournaments yet"
+                : "No tournaments match your current filters"}
+            </p>
           </div>
         )}
       </div>
@@ -330,4 +258,282 @@ const History = () => {
   )
 }
 
-export default History
+/* ==================== RESPONSIVE STYLES ==================== */
+const styles = {
+  container: {
+    padding: "clamp(10px, 3vw, 20px)",
+    margin: "0 auto",
+    backgroundColor: theme.colors.backgroundColor,
+    minHeight: "100vh",
+    color: theme.colors.white,
+    fontFamily: theme.fonts.primary,
+  },
+
+  header: {
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    marginBottom: "clamp(20px, 5vw, 40px)",
+    marginTop: "clamp(60px, 15vw, 80px)",
+    padding: "0 clamp(10px, 3vw, 50px)",
+  },
+
+  backButton: {
+    padding: "clamp(8px, 2vw, 10px) clamp(16px, 4vw, 20px)",
+    borderRadius: "6px",
+    background: theme.gradients.secondaryButton,
+    color: theme.colors.white,
+    cursor: "pointer",
+    fontFamily: theme.fonts.primary,
+    fontSize: "clamp(0.85rem, 2.5vw, 1rem)",
+    boxShadow: theme.shadows.buttonShadow,
+    transition: theme.animations.transition,
+    border: "none",
+    fontWeight: "600",
+  },
+
+  title: {
+    fontSize: "clamp(1.5rem, 5vw, 2.5rem)",
+    margin: "clamp(20px, 5vw, 40px) 0",
+    color: theme.colors.primary,
+    textAlign: "center",
+    textShadow: theme.shadows.headerGlow,
+  },
+
+  filtersContainer: {
+    background: "rgba(10, 10, 10, 0.6)",
+    width: "clamp(90%, 80vw, 80%)",
+    padding: "clamp(12px, 3vw, 20px)",
+    margin: "0 auto clamp(20px, 5vw, 40px)",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "clamp(10px, 2vw, 20px)",
+    border: `1px solid ${theme.colors.secondary}`,
+    borderRadius: "8px",
+    boxShadow: "0 0 16px rgba(0, 255, 224, 0.2)",
+  },
+
+  filterInput: {
+    width: "100%",
+    padding: "clamp(8px, 2vw, 10px)",
+    borderRadius: "8px",
+    backgroundColor: theme.colors.navbarDark,
+    border: `1px solid ${theme.colors.primary}`,
+    color: theme.colors.white,
+    fontSize: "clamp(0.85rem, 2vw, 1rem)",
+    fontFamily: theme.fonts.primary,
+    boxSizing: "border-box",
+  },
+
+  searchInput: {
+    width: "100%",
+    padding: "clamp(8px, 2vw, 10px)",
+    borderRadius: "8px",
+    backgroundColor: theme.colors.navbarDark,
+    border: `1px solid ${theme.colors.primary}`,
+    color: theme.colors.white,
+    fontSize: "clamp(0.85rem, 2vw, 1rem)",
+    fontFamily: theme.fonts.primary,
+    boxSizing: "border-box",
+    gridColumn: "1 / -1", // Span full width on mobile
+  },
+
+  cardsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(clamp(280px, 90vw, 320px), 1fr))",
+    gap: "clamp(15px, 3vw, 20px)",
+    padding: "0 clamp(10px, 3vw, 9%)",
+    marginBottom: "clamp(20px, 5vw, 40px)",
+  },
+
+  card: {
+    backgroundColor: theme.colors.navbarDark,
+    borderRadius: "12px",
+    padding: "clamp(15px, 3vw, 20px)",
+    border: `1px solid ${theme.colors.primary}`,
+    boxShadow: "0 0 16px rgba(255, 0, 127, 0.1)",
+    transition: "all 0.3s ease",
+    display: "flex",
+    flexDirection: "column",
+  },
+
+  cardHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: "15px",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+
+  cardTitle: {
+    margin: 0,
+    color: theme.colors.secondary,
+    fontSize: "clamp(1rem, 3vw, 1.2rem)",
+    fontWeight: "600",
+    flex: 1,
+    minWidth: "150px",
+  },
+
+  resultBadge: {
+    padding: "4px 12px",
+    borderRadius: "20px",
+    color: "white",
+    fontSize: "clamp(0.75rem, 2vw, 0.875rem)",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+  },
+
+  cardBody: {
+    flex: 1,
+  },
+
+  cardInfo: {
+    margin: "8px 0",
+    color: theme.colors.lightGray,
+    fontSize: "clamp(0.85rem, 2vw, 0.95rem)",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+
+  icon: {
+    fontSize: "clamp(1rem, 3vw, 1.2rem)",
+  },
+
+  cardStats: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginTop: "15px",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+
+  statItem: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+  },
+
+  statLabel: {
+    color: theme.colors.lightGray,
+    fontSize: "clamp(0.75rem, 2vw, 0.85rem)",
+  },
+
+  statValue: {
+    color: theme.colors.secondary,
+    fontSize: "clamp(0.9rem, 2.5vw, 1rem)",
+    fontWeight: "600",
+  },
+
+  cardFooter: {
+    marginTop: "15px",
+    textAlign: "center",
+  },
+
+  viewResultsButton: {
+    width: "100%",
+    padding: "clamp(8px, 2vw, 10px) clamp(12px, 3vw, 16px)",
+    borderRadius: "6px",
+    border: "none",
+    background: theme.gradients.primaryButton,
+    color: theme.colors.white,
+    cursor: "pointer",
+    boxShadow: theme.shadows.buttonShadow,
+    fontWeight: 600,
+    fontSize: "clamp(0.85rem, 2vw, 0.9rem)",
+    transition: "all 0.3s ease",
+  },
+
+  loadingContainer: {
+    gridColumn: "1 / -1",
+    textAlign: "center",
+    marginTop: "clamp(40px, 10vw, 80px)",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "20px",
+  },
+
+  spinner: {
+    width: "clamp(40px, 10vw, 60px)",
+    height: "clamp(40px, 10vw, 60px)",
+    border: "4px solid rgba(255, 255, 255, 0.1)",
+    borderTop: "4px solid #00ffe0",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
+  },
+
+  loadingText: {
+    color: theme.colors.lightGray,
+    fontSize: "clamp(1rem, 3vw, 1.5rem)",
+  },
+
+  emptyState: {
+    gridColumn: "1 / -1",
+    textAlign: "center",
+    marginTop: "clamp(40px, 10vw, 80px)",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "15px",
+    padding: "clamp(20px, 5vw, 40px)",
+  },
+
+  emptyIcon: {
+    fontSize: "clamp(3rem, 10vw, 5rem)",
+  },
+
+  emptyTitle: {
+    color: theme.colors.lightGray,
+    fontSize: "clamp(1.2rem, 4vw, 1.8rem)",
+    margin: "0",
+  },
+
+  emptyText: {
+    color: theme.colors.lightGray,
+    fontSize: "clamp(0.9rem, 2.5vw, 1rem)",
+    maxWidth: "500px",
+    lineHeight: "1.6",
+  },
+}
+
+// Add keyframe animation
+const styleSheet = document.createElement("style")
+styleSheet.textContent = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Mobile specific adjustments */
+  @media (max-width: 768px) {
+    /* Make cards full width on very small screens */
+    ${styles.cardsGrid} {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 480px) {
+    /* Stack filters on small screens */
+    ${styles.filtersContainer} {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Hover effects for desktop */
+  @media (hover: hover) {
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 255, 224, 0.4);
+    }
+
+    div[style*="card"]:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(255, 0, 127, 0.3);
+    }
+  }
+`
+document.head.appendChild(styleSheet)
+
+export default History  

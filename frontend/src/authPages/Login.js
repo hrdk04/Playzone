@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import theme from "../theme";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import toast, { Toaster } from "react-hot-toast"; // ✅ ADDED
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -27,22 +28,29 @@ export default function Login() {
 
         setTimeout(() => {
           console.log("Admin Login Success:", response.data);
+          
           // Clean the username by removing "_admin" suffix
           const cleanUsername = formData.emailOrUsername.replace(/_admin$/, "");
 
-          // Store the admin object with clean username
-          localStorage.setItem(
-            "admin",
-            JSON.stringify(response.data.admin || { username: cleanUsername })
-          );
+          // ✅ Store ONLY the clean username string
           localStorage.setItem("adminName", cleanUsername);
+          
+          // ✅ Store admin object with clean username
+          const adminData = {
+            username: cleanUsername,
+            // Add other admin data from response if available
+            ...(response.data.admin || {})
+          };
+          localStorage.setItem("admin", JSON.stringify(adminData));
+
+          console.log("✅ Stored admin data:", adminData); // Debug log
 
           window.dispatchEvent(new Event("storage"));
-          alert(`Logged in as Admin: ${cleanUsername}`);
+          toast.success(`Logged in as Admin: ${cleanUsername}`); // ✅ CHANGED
 
           navigate("/admin");
         }, 1000);
-      } 
+      }
       // ✅ Regular user login
       else {
         const response = await axios.post("http://localhost:5000/login", formData);
@@ -60,13 +68,13 @@ export default function Login() {
           }
 
           window.dispatchEvent(new Event("storage"));
-          alert(`Logged in as ${response.data.user.username}`);
+          toast.success(`Logged in as ${response.data.user.username}`); // ✅ CHANGED
           navigate("/DashBoard");
         }, 1000);
       }
     } catch (error) {
       console.error("Login Error:", error);
-      alert(error.response?.data?.message || "Login failed. Please check your credentials.");
+      toast.error(error.response?.data?.message || "Login failed. Please check your credentials."); // ✅ CHANGED
     } finally {
       setLoading(false);
     }
@@ -100,6 +108,9 @@ export default function Login() {
         padding: "50px 20px",
       }}
     >
+      {/* ✅ ADDED: Toaster component */}
+      <Toaster position="top-right" reverseOrder={false} />
+
       <div
         style={{
           width: "100%",
@@ -203,12 +214,12 @@ export default function Login() {
             color: theme.colors.lightGray,
           }}
         >
-          Don’t have an account?{" "}
+          Don't have an account?{" "}
           <a href="/signup" style={{ color: theme.colors.secondary }}>
             Sign up here
           </a>
         </p>
-
+          <br/>
         <p
           style={{
             fontSize: "0.9rem",

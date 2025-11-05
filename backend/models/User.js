@@ -3,6 +3,9 @@ import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema(
   {
+    // ============================
+    // 📌 BASIC INFO
+    // ============================
     fullName: { type: String, required: true },
     username: { type: String, required: true, unique: true },
     dob: { type: String },
@@ -10,43 +13,73 @@ const userSchema = new mongoose.Schema(
     contact: { type: String },
     password: { type: String, required: true },
     amount: { type: Number, default: 0 },
-    // Chat-related fields
-    firstName: { type: String },
-    lastName: { type: String },
-    bio: { type: String, default: "" },
-    profilePicture: { type: String, default: "" },
-    followers: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "user_master",
-    }],
-    following: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "user_master",
-    }],
-    pendingFollowRequests: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "user_master",
-    }],
-    sentFollowRequests: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "user_master",
-    }],
-    // Tournament-related fields
-    tournamentsJoined: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "tournament",
-    }],
-    teamName: { type: String, default: "" },
-    gamingStats: {
-      totalTournaments: { type: Number, default: 0 },
-      tournamentsWon: { type: Number, default: 0 },
-      totalPrizeMoney: { type: Number, default: 0 },
-      favoriteGame: { type: String, default: "" },
-      rank: { type: String, default: "Bronze" },
+
+    // ============================
+    // 🌐 SOCIAL (Simple & Clean)
+    // ============================
+    social: {
+      type: {
+        followers: [{
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "user_master",
+        }],
+        following: [{
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "user_master",
+        }],
+        requests: {
+          received: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "user_master",
+          }],
+          sent: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "user_master",
+          }],
+        },
+      },
+      default: () => ({
+        followers: [],
+        following: [],
+        requests: {
+          received: [],
+          sent: [],
+        },
+      }),
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
+
+// ============================
+// 🔒 PRE-SAVE MIDDLEWARE
+// ============================
+
+// Initialize social structure for new AND existing users
+userSchema.pre("save", function (next) {
+  if (!this.social) {
+    this.social = {
+      followers: [],
+      following: [],
+      requests: {
+        received: [],
+        sent: [],
+      },
+    };
+  }
+  if (!this.social.requests) {
+    this.social.requests = {
+      received: [],
+      sent: [],
+    };
+  }
+  if (!this.social.followers) this.social.followers = [];
+  if (!this.social.following) this.social.following = [];
+  if (!this.social.requests.received) this.social.requests.received = [];
+  if (!this.social.requests.sent) this.social.requests.sent = [];
+  
+  next();
+});
 
 // Hash password before saving
 userSchema.pre("save", async function (next) {
@@ -55,30 +88,33 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-// Compare password method
+// ============================
+// 🔐 METHODS
+// ============================
+
+// Compare password
 userSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
-// Method to get chat-compatible user data
-userSchema.methods.getChatData = function() {
+// Get chat-compatible user data
+userSchema.methods.getChatData = function () {
   return {
     id: this._id,
     username: this.username,
     email: this.email,
-    firstName: this.firstName || this.fullName.split(' ')[0],
-    lastName: this.lastName || this.fullName.split(' ').slice(1).join(' '),
-    bio: this.bio,
-    followers: this.followers.length,
-    following: this.following.length,
-    pendingRequests: this.pendingFollowRequests.length,
-    sentRequests: this.sentFollowRequests.length,
-    profilePicture: this.profilePicture,
+    fullName: this.fullName,
+    firstName: this.fullName.split(" ")[0],
+    lastName: this.fullName.split(" ").slice(1).join(" "),
+    followers: this.social?.followers?.length || 0,
+    following: this.social?.following?.length || 0,
+    pendingRequests: this.social?.requests?.received?.length || 0,
+    sentRequests: this.social?.requests?.sent?.length || 0,
   };
 };
 
-// Method to get tournament-compatible user data
-userSchema.methods.getTournamentData = function() {
+// Get tournament-compatible user data
+userSchema.methods.getTournamentData = function () {
   return {
     _id: this._id,
     fullName: this.fullName,
@@ -87,7 +123,6 @@ userSchema.methods.getTournamentData = function() {
     contact: this.contact,
     dob: this.dob,
     amount: this.amount,
-    gamingStats: this.gamingStats,
   };
 };
 

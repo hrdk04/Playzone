@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import axios from "axios"
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import theme from "../theme"
 import UserSideNav from "./UserSideNav"
 
@@ -74,7 +76,10 @@ export default function Tournaments() {
         }))
         setTournaments(data)
       })
-      .catch((err) => console.error("Error fetching tournaments:", err))
+      .catch((err) => {
+        console.error("Error fetching tournaments:", err)
+        toast.error("Failed to load tournaments")
+      })
   }, [])
 
   const handleTournamentClick = (tournament) => {
@@ -85,7 +90,9 @@ export default function Tournaments() {
         navigate(`/tournaments/results/${tournament.id}`)
       } else {
         // Show message for completed tournaments without results
-        alert("Tournament completed but results are not yet published. Please check back later.")
+        toast.info("Tournament completed but results are not yet published. Please check back later.", {
+          autoClose: 4000
+        })
       }
       return
     }
@@ -101,7 +108,10 @@ export default function Tournaments() {
 
   const handleTeamSave = (e) => {
     e.preventDefault()
-    if (!teamName.trim()) return
+    if (!teamName.trim()) {
+      toast.warning("Please enter a team name")
+      return
+    }
     setShowTeamForm(false)
     setShowConfirmPay(true)
   }
@@ -120,7 +130,7 @@ export default function Tournaments() {
         }
       }
       if (!user?._id) {
-        alert("Please login again.")
+        toast.error("Please login again")
         navigate("/login")
         return
       }
@@ -131,16 +141,19 @@ export default function Tournaments() {
 
       if (balance < fee) {
         const deficit = Math.max(fee - balance, 1)
-        navigate("/payments", {
-          state: {
-            action: "topup_then_register",
-            topUpFor: "tournament",
-            requiredAmount: deficit,
-            returnTo: location.pathname + location.search, // Preserve exact location
-            meta: selectedTournament,
-            teamName: teamName,
-          },
-        })
+        toast.info("Insufficient balance. Redirecting to payment page...")
+        setTimeout(() => {
+          navigate("/payments", {
+            state: {
+              action: "topup_then_register",
+              topUpFor: "tournament",
+              requiredAmount: deficit,
+              returnTo: location.pathname + location.search,
+              meta: selectedTournament,
+              teamName: teamName,
+            },
+          })
+        }, 1500)
         return
       }
 
@@ -148,10 +161,14 @@ export default function Tournaments() {
         user_id: user._id,
         tournament_id: selectedTournament.id,
         team_name: teamName,
-        payment_method: "wallet", // was pay_method; fixing to match server.js
+        payment_method: "wallet",
       }
+      
       const reg = await axios.post("http://localhost:5000/tournament/register", payload)
-      alert(reg.data?.message || "Registered successfully!")
+      
+      toast.success(reg.data?.message || "Registered successfully! 🎉", {
+        autoClose: 3000
+      })
 
       // Refresh user balance from backend and persist so Dashboard reflects deduction
       try {
@@ -166,7 +183,9 @@ export default function Tournaments() {
       setSelectedTournament(null)
     } catch (err) {
       console.error("Register error:", err)
-      alert(err?.response?.data?.message || "Registration failed.")
+      toast.error(err?.response?.data?.message || "Registration failed. Please try again.", {
+        autoClose: 4000
+      })
     } finally {
       setLoading(false)
     }
@@ -357,9 +376,9 @@ export default function Tournaments() {
                   onClick={(e) => {
                     e.stopPropagation()
                     if (t.result_published) {
-                      navigate(`/tournaments/results/${t.id}`,"_blank")
+                      navigate(`/tournaments/results/${t.id}`)
                     } else {
-                      alert("Tournament completed but results are not yet published. Please check back later.")
+                      toast.info("Tournament completed but results are not yet published. Please check back later.")
                     }
                   }}
                   onMouseEnter={(e) => {
@@ -420,6 +439,21 @@ export default function Tournaments() {
         padding: isDashboardView ? "1rem" : "2rem",
       }}
     >
+      {/* Toast Container */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+        style={{ zIndex: 9999 }}
+      />
+
       {isLoggedIn && (
         <>
           <UserSideNav />

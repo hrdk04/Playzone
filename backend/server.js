@@ -10,6 +10,7 @@ import nodemailer from "nodemailer";
 import cron from 'node-cron';
 import fs from 'fs';
 import jwt from "jsonwebtoken";
+import { Message, Conversation } from "./models/SocialChat.js"
 import bcrypt from "bcryptjs";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -99,10 +100,13 @@ io.use(async (socket, next) => {
 });
 
 // Socket.io Connection Handler for chat
+// ==========================
+//  SOCKET.IO CHAT HANDLER (SIMPLIFIED)
+// ==========================
 const userSockets = new Map(); // userId -> socketId
 
 io.on("connection", (socket) => {
-  console.log(`User connected: ${socket.userId}`);
+  console.log(`✅ User connected: ${socket.userId}`);
   userSockets.set(socket.userId, socket.id);
 
   // Send online users list
@@ -111,47 +115,97 @@ io.on("connection", (socket) => {
   // Join user's personal room
   socket.join(`user:${socket.userId}`);
 
-  // Send message
+  // ============================
+  // 💬 SEND MESSAGE (UPDATED)
+  // ============================
   socket.on("sendMessage", async (data) => {
     try {
       const { receiverId, content } = data;
 
-      // Validate message content
+      // Validate
       if (!content || content.trim().length === 0) {
-        return socket.emit("error", { message: "Message content cannot be empty" });
+        return socket.emit("error", { message: "Message cannot be empty" });
       }
 
       if (content.length > 1000) {
         return socket.emit("error", { message: "Message too long" });
       }
 
-      // Create message (you'll need to create a Message model)
-      const message = {
+      // Create message in database
+      const message = await Message.create({
         sender: socket.userId,
         receiver: receiverId,
         content: content.trim(),
-        createdAt: new Date(),
-      };
+      });
+
+      // Populate sender info
+      await message.populate("sender", "username fullName");
+
+      // Find or create conversation
+      let conversation = await Conversation.findOne({
+        participants: { $all: [socket.userId, receiverId], $size: 2 },
+      });
+
+      if (!conversation) {
+        conversation = await Conversation.create({
+          participants: [socket.userId, receiverId],
+        });
+      }
+
+      // Update last message
+      conversation.lastMessage = content.trim();
+      conversation.lastMessageTime = new Date();
+      await conversation.save();
 
       // Send to sender
       socket.emit("receiveMessage", message);
 
       // Send to receiver if online
-      const receiverSocketId = userSockets.get(receiverId);
+      const receiverSocketId = userSockets.get(receiverId.toString());
       if (receiverSocketId) {
         io.to(receiverSocketId).emit("receiveMessage", message);
       }
 
-      // Emit to both users' personal rooms for real-time updates
+      // Emit to both users' rooms for real-time updates
       io.to(`user:${socket.userId}`).emit("messageSent", message);
       io.to(`user:${receiverId}`).emit("messageReceived", message);
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("❌ Error sending message:", error);
       socket.emit("error", { message: "Failed to send message" });
     }
   });
 
-  // Handle follow request events
+  // ============================
+  // 👁️ MARK AS READ
+  // ============================
+  socket.on("markAsRead", async (data) => {
+    try {
+      const { senderId } = data;
+
+      await Message.updateMany(
+        {
+          sender: senderId,
+          receiver: socket.userId,
+          isRead: false,
+        },
+        { $set: { isRead: true } }
+      );
+
+      socket.emit("markedAsRead", { senderId });
+      
+      // Notify sender that messages were read
+      const senderSocketId = userSockets.get(senderId);
+      if (senderSocketId) {
+        io.to(senderSocketId).emit("messagesRead", { readBy: socket.userId });
+      }
+    } catch (error) {
+      console.error("❌ Error marking as read:", error);
+    }
+  });
+
+  // ============================
+  // 🔔 FOLLOW REQUEST
+  // ============================
   socket.on("followRequestSent", (data) => {
     const { receiverId } = data;
     const receiverSocketId = userSockets.get(receiverId);
@@ -161,13 +215,14 @@ io.on("connection", (socket) => {
         userId: socket.userId,
       });
     }
-    // Update sender's UI
     socket.emit("userFollowed", { message: "Request sent successfully" });
   });
 
-  // Disconnect handler
+  // ============================
+  // 🚪 DISCONNECT
+  // ============================
   socket.on("disconnect", () => {
-    console.log(`User disconnected: ${socket.userId}`);
+    console.log(`❌ User disconnected: ${socket.userId}`);
     userSockets.delete(socket.userId);
     io.emit("onlineUsers", Array.from(userSockets.keys()));
     io.emit("userOffline", socket.userId);
@@ -255,11 +310,14 @@ const paymentSchema = new mongoose.Schema(
 
 const Payment = mongoose.model("payment", paymentSchema)
 
+
+
 // ==========================
 //  DATABASE CONNECTION
 // ==========================
 mongoose
   .connect(
+    // 'mongodb+srv://yk2552005_db_user:aPaJ7RBrI1imHXH1@cluster0.awcnqsc.mongodb.net/PlayzoneDB?appName=Cluster0',
     "mongodb+srv://inquisitivewoodpeckermhwz_db_user:Ihatejava123@cluster0.7pmkm4a.mongodb.net/Tournament_DB?retryWrites=true&w=majority&appName=Cluster0",
   )
   .then(async () => {
@@ -337,6 +395,146 @@ app.get("/api/auth/me", auth, async (req, res) => {
   }
 });
 
+// ==========================
+//  SOCIAL CHAT ROUTES
+// ==========================
+
+// Get all conversations
+app.get("/api/conversations", auth, async (req, res) => {
+  try {
+    const conversations = await Conversation.find({
+      participants: req.user._id,
+    })
+      .populate("participants", "username fullName")
+      .sort({ lastMessageTime: -1 });
+
+    const formatted = await Promise.all(
+      conversations.map(async (conv) => {
+        // Get other user
+        const otherUser = conv.participants.find(
+          (p) => p._id.toString() !== req.user._id.toString()
+        );
+
+        if (!otherUser) return null;
+
+        // Count unread messages
+        const unreadCount = await Message.countDocuments({
+          sender: otherUser._id,
+          receiver: req.user._id,
+          isRead: false,
+        });
+
+        return {
+          _id: conv._id,
+          user: {
+            id: otherUser._id,
+            username: otherUser.username,
+            firstName: otherUser.fullName.split(" ")[0],
+            lastName: otherUser.fullName.split(" ").slice(1).join(" "),
+          },
+          lastMessage: {
+            content: conv.lastMessage,
+            isSender: false,
+          },
+          unreadCount,
+          updatedAt: conv.lastMessageTime,
+        };
+      })
+    );
+
+    res.json(formatted.filter(c => c !== null));
+  } catch (error) {
+    console.error("❌ Error fetching conversations:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get messages with a specific user
+app.get("/api/conversations/:userId/messages", auth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Get all messages between these two users
+    const messages = await Message.find({
+      $or: [
+        { sender: req.user._id, receiver: userId },
+        { sender: userId, receiver: req.user._id },
+      ],
+    })
+      .populate("sender", "username fullName")
+      .populate("receiver", "username fullName")
+      .sort({ createdAt: 1 });
+
+    // Mark received messages as read
+    await Message.updateMany(
+      {
+        sender: userId,
+        receiver: req.user._id,
+        isRead: false,
+      },
+      { $set: { isRead: true } }
+    );
+
+    res.json(messages);
+  } catch (error) {
+    console.error("❌ Error fetching messages:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Start a new conversation
+app.post("/api/conversations/start", auth, async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+
+    // Check if user exists
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if conversation already exists
+    let conversation = await Conversation.findOne({
+      participants: { $all: [req.user._id, userId], $size: 2 },
+    });
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants: [req.user._id, userId],
+      });
+    }
+
+    await conversation.populate("participants", "username fullName");
+
+    res.json({
+      message: "Conversation ready",
+      conversation,
+    });
+  } catch (error) {
+    console.error("❌ Error starting conversation:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get total unread count
+app.get("/api/messages/unread-count", auth, async (req, res) => {
+  try {
+    const totalUnread = await Message.countDocuments({
+      receiver: req.user._id,
+      isRead: false,
+    });
+
+    res.json({ total: totalUnread });
+  } catch (error) {
+    console.error("❌ Error getting unread count:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Enhanced search users for chat
 app.get("/api/users/search", auth, async (req, res) => {
   try {
@@ -345,112 +543,140 @@ app.get("/api/users/search", auth, async (req, res) => {
       return res.json([]);
     }
 
-    // Search in multiple fields including tournament participation
+    // Search users
     const users = await User.find({
       $or: [
         { username: { $regex: q, $options: 'i' } },
         { fullName: { $regex: q, $options: 'i' } },
-        { email: { $regex: q, $options: 'i' } },
-        { teamName: { $regex: q, $options: 'i' } }
+        { email: { $regex: q, $options: 'i' } }
       ],
-      _id: { $ne: req.user._id } // Exclude current user
+      _id: { $ne: req.user._id }
     }).limit(10);
 
-    // Also search for users by tournament participation
-    const tournamentSearch = await Tournament.find({
-      $or: [
-        { t_id: { $regex: q, $options: 'i' } },
-        { "participants.team_name": { $regex: q, $options: 'i' } }
-      ]
-    }).populate('participants.user_id', 'username fullName email teamName');
-
-    // Extract users from tournament search
-    const tournamentUsers = [];
-    tournamentSearch.forEach(tournament => {
-      tournament.participants.forEach(participant => {
-        if (participant.user_id && participant.user_id._id.toString() !== req.user._id.toString()) {
-          tournamentUsers.push({
-            ...participant.user_id.toObject(),
-            foundVia: tournament.t_id,
-            teamName: participant.team_name
-          });
-        }
-      });
-    });
-
-    // Combine and deduplicate results
-    const allUsers = [...users, ...tournamentUsers];
-    const uniqueUsers = allUsers.reduce((acc, user) => {
-      const existing = acc.find(u => u._id.toString() === user._id.toString());
-      if (!existing) {
-        acc.push(user);
-      }
-      return acc;
-    }, []);
-
-    const searchResults = uniqueUsers.map(user => ({
+    const searchResults = users.map(user => ({
       id: user._id,
       username: user.username,
-      firstName: user.firstName || user.fullName.split(' ')[0],
-      lastName: user.lastName || user.fullName.split(' ').slice(1).join(' '),
+      firstName: user.fullName.split(' ')[0],
+      lastName: user.fullName.split(' ').slice(1).join(' '),
       email: user.email,
-      teamName: user.teamName || user.foundVia,
-      foundVia: user.foundVia,
-      isFollowing: req.user.following.includes(user._id),
-      hasRequested: req.user.sentFollowRequests.includes(user._id),
-      followers: user.followers?.length || 0
+      isFollowing: req.user.social.following.some(id => id.toString() === user._id.toString()),
+      hasRequested: req.user.social.requests.sent.some(id => id.toString() === user._id.toString()),
+      followers: user.social?.followers?.length || 0
     }));
 
     res.json(searchResults);
   } catch (error) {
+    console.error("❌ Error searching users:", error);
     res.status(500).json({ message: error.message });
   }
 });
 
 // Get suggested users based on tournaments
+// Get suggested users based on tournaments (UPDATED)
 app.get("/api/users/suggested", auth, async (req, res) => {
   try {
-    // Find users who joined the same tournaments
+    // Find tournaments where current user participated
     const userTournaments = await Tournament.find({
       "participants.user_id": req.user._id
+    }).select("t_id game participants");
+
+    // Collect all user IDs from these tournaments
+    const tournamentMates = new Map(); // userId -> [tournament info]
+
+    userTournaments.forEach(tournament => {
+      tournament.participants.forEach(participant => {
+        const userId = participant.user_id.toString();
+        
+        // Skip current user
+        if (userId === req.user._id.toString()) return;
+        
+        // Skip already followed users
+        if (req.user.social.following.some(id => id.toString() === userId)) return;
+        
+        // Skip users with pending requests
+        if (req.user.social.requests.sent.some(id => id.toString() === userId)) return;
+        if (req.user.social.requests.received.some(id => id.toString() === userId)) return;
+
+        // Add tournament info
+        if (!tournamentMates.has(userId)) {
+          tournamentMates.set(userId, []);
+        }
+        tournamentMates.get(userId).push({
+          t_id: tournament.t_id,
+          game: tournament.game
+        });
+      });
     });
 
-    const tournamentIds = userTournaments.map(t => t._id);
-    
-    // Find other users who joined the same tournaments
-    const suggestedUsers = await User.find({
-      tournamentsJoined: { $in: tournamentIds },
-      _id: { 
-        $nin: [
-          req.user._id,
-          ...req.user.following,
-          ...req.user.sentFollowRequests
-        ]
-      }
+    // Get user details for tournament mates
+    const tournamentMateIds = Array.from(tournamentMates.keys());
+    const tournamentMateUsers = await User.find({
+      _id: { $in: tournamentMateIds }
     }).limit(10);
 
-    const suggestions = suggestedUsers.map(user => ({
+    const suggestions = tournamentMateUsers.map(user => ({
       id: user._id,
       username: user.username,
-      firstName: user.firstName || user.fullName.split(' ')[0],
-      lastName: user.lastName || user.fullName.split(' ').slice(1).join(' '),
+      firstName: user.fullName.split(' ')[0],
+      lastName: user.fullName.split(' ').slice(1).join(' '),
       email: user.email,
-      followers: user.followers.length,
+      followers: user.social?.followers?.length || 0,
       isFollowing: false,
-      hasRequested: false
+      hasRequested: false,
+      tournaments: tournamentMates.get(user._id.toString()) || [],
+      tournamentsCount: tournamentMates.get(user._id.toString())?.length || 0
     }));
+
+    // Sort by number of common tournaments (descending)
+    suggestions.sort((a, b) => b.tournamentsCount - a.tournamentsCount);
+
+    // If we have less than 10 suggestions, add random users
+    if (suggestions.length < 10) {
+      const randomUsers = await User.find({
+        _id: { 
+          $nin: [
+            req.user._id,
+            ...req.user.social.following,
+            ...req.user.social.requests.sent,
+            ...req.user.social.requests.received,
+            ...tournamentMateIds
+          ]
+        }
+      }).limit(10 - suggestions.length);
+
+      const randomSuggestions = randomUsers.map(user => ({
+        id: user._id,
+        username: user.username,
+        firstName: user.fullName.split(' ')[0],
+        lastName: user.fullName.split(' ').slice(1).join(' '),
+        email: user.email,
+        followers: user.social?.followers?.length || 0,
+        isFollowing: false,
+        hasRequested: false,
+        tournaments: [],
+        tournamentsCount: 0
+      }));
+
+      suggestions.push(...randomSuggestions);
+    }
 
     res.json(suggestions);
   } catch (error) {
+    console.error("❌ Error fetching suggested users:", error);
     res.status(500).json({ message: error.message });
   }
 });
 
 // Send follow request
+// ==========================
+//  UPDATED FOLLOW ROUTES (MATCHING USER SCHEMA)
+// ==========================
+
+// Send follow request
 app.post("/api/follow/request", auth, async (req, res) => {
   try {
     const { userId } = req.body;
-    
+
     if (userId === req.user._id.toString()) {
       return res.status(400).json({ message: "Cannot follow yourself" });
     }
@@ -460,24 +686,27 @@ app.post("/api/follow/request", auth, async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (req.user.following.includes(userId)) {
+    // Check if already following
+    if (req.user.social.following.includes(userId)) {
       return res.status(400).json({ message: "Already following this user" });
     }
 
-    if (req.user.sentFollowRequests.includes(userId)) {
+    // Check if request already sent
+    if (req.user.social.requests.sent.includes(userId)) {
       return res.status(400).json({ message: "Follow request already sent" });
     }
 
     // Add to sent requests
-    req.user.sentFollowRequests.push(userId);
+    req.user.social.requests.sent.push(userId);
     await req.user.save();
 
     // Add to target user's pending requests
-    targetUser.pendingFollowRequests.push(req.user._id);
+    targetUser.social.requests.received.push(req.user._id);
     await targetUser.save();
 
     res.json({ message: "Follow request sent successfully" });
   } catch (error) {
+    console.error("❌ Error sending follow request:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -486,26 +715,27 @@ app.post("/api/follow/request", auth, async (req, res) => {
 app.post("/api/follow/cancel", auth, async (req, res) => {
   try {
     const { userId } = req.body;
-    
+
     const targetUser = await User.findById(userId);
     if (!targetUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
     // Remove from sent requests
-    req.user.sentFollowRequests = req.user.sentFollowRequests.filter(
-      id => id.toString() !== userId
+    req.user.social.requests.sent = req.user.social.requests.sent.filter(
+      (id) => id.toString() !== userId
     );
     await req.user.save();
 
     // Remove from target user's pending requests
-    targetUser.pendingFollowRequests = targetUser.pendingFollowRequests.filter(
-      id => id.toString() !== req.user._id.toString()
+    targetUser.social.requests.received = targetUser.social.requests.received.filter(
+      (id) => id.toString() !== req.user._id.toString()
     );
     await targetUser.save();
 
     res.json({ message: "Follow request cancelled successfully" });
   } catch (error) {
+    console.error("❌ Error cancelling follow request:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -513,45 +743,136 @@ app.post("/api/follow/cancel", auth, async (req, res) => {
 // Get pending follow requests
 app.get("/api/follow/pending", auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id)
-      .populate('pendingFollowRequests', 'username fullName email');
-    
-    res.json(user.pendingFollowRequests);
+    const user = await User.findById(req.user._id).populate(
+      "social.requests.received",
+      "username fullName email"
+    );
+
+    res.json(user.social?.requests?.received || []);
   } catch (error) {
+    console.error("❌ Error fetching pending requests:", error);
     res.status(500).json({ message: error.message });
   }
 });
 
-// Accept follow request
+// MIGRATION: Initialize social structure for existing users
+app.post("/admin/migrate-users", async (req, res) => {
+  try {
+    const users = await User.find({});
+    let updated = 0;
+
+    for (const user of users) {
+      if (!user.social || !user.social.requests) {
+        user.social = {
+          followers: user.social?.followers || [],
+          following: user.social?.following || [],
+          requests: {
+            received: user.social?.requests?.received || [],
+            sent: user.social?.requests?.sent || [],
+          },
+        };
+        await user.save();
+        updated++;
+      }
+    }
+
+    res.json({ 
+      message: `Migration complete. Updated ${updated} users.`,
+      total: users.length,
+      updated 
+    });
+  } catch (error) {
+    console.error("Migration error:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Accept follow request (CREATES CONVERSATION!)
 app.post("/api/follow/accept", auth, async (req, res) => {
   try {
     const { userId } = req.body;
-    
+
+    console.log("🔍 Accepting request from:", userId, "by:", req.user._id);
+
     const requester = await User.findById(userId);
     if (!requester) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Remove from pending requests
-    req.user.pendingFollowRequests = req.user.pendingFollowRequests.filter(
-      id => id.toString() !== userId
+    // Ensure social structure exists
+    if (!req.user.social) {
+      req.user.social = {
+        followers: [],
+        following: [],
+        requests: { received: [], sent: [] }
+      };
+    }
+    if (!requester.social) {
+      requester.social = {
+        followers: [],
+        following: [],
+        requests: { received: [], sent: [] }
+      };
+    }
+
+    // Check if request exists
+    const requestExists = req.user.social.requests.received.some(
+      id => id.toString() === userId
     );
+
+    if (!requestExists) {
+      return res.status(400).json({ message: "No pending request from this user" });
+    }
+
+    // Remove from pending requests
+    req.user.social.requests.received = req.user.social.requests.received.filter(
+      (id) => id.toString() !== userId
+    );
+
+    // Add to followers (avoid duplicates)
+    if (!req.user.social.followers.some(id => id.toString() === userId)) {
+      req.user.social.followers.push(userId);
+    }
     
-    // Add to followers
-    req.user.followers.push(userId);
     await req.user.save();
+    console.log("✅ Updated current user's followers");
 
     // Remove from requester's sent requests
-    requester.sentFollowRequests = requester.sentFollowRequests.filter(
-      id => id.toString() !== req.user._id.toString()
+    requester.social.requests.sent = requester.social.requests.sent.filter(
+      (id) => id.toString() !== req.user._id.toString()
     );
-    
-    // Add to requester's following
-    requester.following.push(req.user._id);
-    await requester.save();
 
-    res.json({ message: "Follow request accepted" });
+    // Add to requester's following (avoid duplicates)
+    if (!requester.social.following.some(id => id.toString() === req.user._id.toString())) {
+      requester.social.following.push(req.user._id);
+    }
+    
+    await requester.save();
+    console.log("✅ Updated requester's following");
+
+    // ✅ CREATE CONVERSATION
+    let conversation = await Conversation.findOne({
+      participants: { $all: [req.user._id, userId], $size: 2 },
+    });
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants: [req.user._id, userId],
+        lastMessage: "",
+        lastMessageTime: new Date(),
+      });
+      console.log("✅ Created new conversation");
+    } else {
+      console.log("✅ Conversation already exists");
+    }
+
+    res.json({
+      message: "Follow request accepted. You can now chat!",
+      canChat: true,
+      conversation: conversation,
+    });
   } catch (error) {
+    console.error("❌ Error accepting follow request:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -560,26 +881,27 @@ app.post("/api/follow/accept", auth, async (req, res) => {
 app.post("/api/follow/reject", auth, async (req, res) => {
   try {
     const { userId } = req.body;
-    
+
     const requester = await User.findById(userId);
     if (!requester) {
       return res.status(404).json({ message: "User not found" });
     }
 
     // Remove from pending requests
-    req.user.pendingFollowRequests = req.user.pendingFollowRequests.filter(
-      id => id.toString() !== userId
+    req.user.social.requests.received = req.user.social.requests.received.filter(
+      (id) => id.toString() !== userId
     );
     await req.user.save();
 
     // Remove from requester's sent requests
-    requester.sentFollowRequests = requester.sentFollowRequests.filter(
-      id => id.toString() !== req.user._id.toString()
+    requester.social.requests.sent = requester.social.requests.sent.filter(
+      (id) => id.toString() !== req.user._id.toString()
     );
     await requester.save();
 
     res.json({ message: "Follow request rejected" });
   } catch (error) {
+    console.error("❌ Error rejecting follow request:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -588,26 +910,27 @@ app.post("/api/follow/reject", auth, async (req, res) => {
 app.post("/api/follow/unfollow", auth, async (req, res) => {
   try {
     const { userId } = req.body;
-    
+
     const targetUser = await User.findById(userId);
     if (!targetUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
     // Remove from following
-    req.user.following = req.user.following.filter(
-      id => id.toString() !== userId
+    req.user.social.following = req.user.social.following.filter(
+      (id) => id.toString() !== userId
     );
     await req.user.save();
 
     // Remove from target user's followers
-    targetUser.followers = targetUser.followers.filter(
-      id => id.toString() !== req.user._id.toString()
+    targetUser.social.followers = targetUser.social.followers.filter(
+      (id) => id.toString() !== req.user._id.toString()
     );
     await targetUser.save();
 
     res.json({ message: "Unfollowed successfully" });
   } catch (error) {
+    console.error("❌ Error unfollowing:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -920,19 +1243,7 @@ app.post("/admin/broadcast", async (req, res) => {
           </p>
         </div>
         
-        <div style="margin: 25px 0;">
-          <a href="http://localhost:3000/DashBoard" target="_blank" style="
-            background: linear-gradient(90deg, #00ffcc, #0077ff);
-            padding: 12px 25px;
-            color: #fff;
-            font-weight: bold;
-            border-radius: 8px;
-            text-decoration: none;
-            text-transform: uppercase;
-            box-shadow: 0 0 15px #00ffcc;
-            display: inline-block;
-          ">Visit Dashboard</a>
-        </div>
+       
         
         <hr style="border: none; border-top: 1px solid #333; margin: 25px 0;">
         <p style="font-size: 12px; color: #888;">
@@ -1170,13 +1481,33 @@ app.get("/admin/status", async (req, res) => {
 
 // ---------------- Admin Profile Management ----------------
 
+// ---------------- Admin Profile Management (FIXED) ----------------
+
+// ---------------- Admin Profile Management (FIXED TO HANDLE OBJECT) ----------------
+
 app.get("/admin/profile", async (req, res) => {
   try {
-    const { username } = req.query;
-    if (!username) return res.status(400).json({ message: "Username required" });
+    let { username } = req.query;
+    
+    console.log("🔍 Fetching admin profile for username:", username);
+    
+    if (!username) {
+      return res.status(400).json({ message: "Username required" });
+    }
+
+    // ✅ Handle if username comes as a string or needs cleanup
+    username = username.replace(/_admin$/, "").trim();
+    
+    console.log("🔍 After cleanup, searching for:", username);
 
     const admin = await Admin.findOne({ username }).select('-password');
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
+    
+    if (!admin) {
+      console.log("❌ Admin not found in database");
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    console.log("✅ Admin found:", admin.username);
 
     res.json({
       username: admin.username,
@@ -1187,18 +1518,26 @@ app.get("/admin/profile", async (req, res) => {
       updatedAt: admin.updatedAt
     });
   } catch (err) {
-    console.error("Get admin profile error:", err);
+    console.error("❌ Get admin profile error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
 app.put("/admin/profile", async (req, res) => {
   try {
-    const { username, notificationEmail } = req.body;
-    if (!username) return res.status(400).json({ message: "Username required" });
+    let { username, notificationEmail } = req.body;
+    
+    if (!username) {
+      return res.status(400).json({ message: "Username required" });
+    }
+
+    // ✅ REMOVE _admin suffix if present
+    username = username.replace(/_admin$/, "");
 
     const admin = await Admin.findOne({ username });
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
 
     // Update notification email if provided
     if (notificationEmail !== undefined) {
@@ -1229,13 +1568,19 @@ app.put("/admin/profile", async (req, res) => {
 
 app.put("/admin/change-password", async (req, res) => {
   try {
-    const { username, currentPassword, newPassword } = req.body;
+    let { username, currentPassword, newPassword } = req.body;
+    
     if (!username || !currentPassword || !newPassword) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    // ✅ REMOVE _admin suffix if present
+    username = username.replace(/_admin$/, "");
+
     const admin = await Admin.findOne({ username });
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
 
     // Verify current password
     if (admin.password !== currentPassword) {
@@ -2090,19 +2435,7 @@ app.put("/admin/tournaments/:id/publish-result", async (req, res) => {
                       </p>
                     </div>
 
-                    <div style="margin: 25px 0;">
-                      <a href="http://localhost:3000/DashBoard" target="_blank" style="
-                        background: linear-gradient(90deg, #00ffcc, #0077ff);
-                        padding: 12px 25px;
-                        color: #fff;
-                        font-weight: bold;
-                        border-radius: 8px;
-                        text-decoration: none;
-                        text-transform: uppercase;
-                        box-shadow: 0 0 15px #00ffcc;
-                        display: inline-block;
-                      ">View Dashboard</a>
-                    </div>
+                    
 
                     <hr style="border: none; border-top: 1px solid #333; margin: 25px 0;">
                     <p style="font-size: 12px; color: #888;">
@@ -2221,19 +2554,7 @@ app.post("/admin/tournaments/:id/share-result-image", async (req, res) => {
               Check the attached result image to see the winners and their prizes!
             </p>
             
-            <div style="margin: 25px 0;">
-              <a href="http://localhost:3000/tournaments" target="_blank" style="
-                background: linear-gradient(90deg, #00ffcc, #0077ff);
-                padding: 12px 25px;
-                color: #fff;
-                font-weight: bold;
-                border-radius: 8px;
-                text-decoration: none;
-                text-transform: uppercase;
-                box-shadow: 0 0 15px #00ffcc;
-                display: inline-block;
-              ">View All Tournaments</a>
-            </div>
+           
             
             <hr style="border: none; border-top: 1px solid #333; margin: 25px 0;">
             <p style="font-size: 12px; color: #888;">
@@ -2367,18 +2688,7 @@ app.post("/admin/tournaments/:id/send-credentials", async (req, res) => {
       Late entries will not be accepted.
     </p>
 
-    <div style="margin: 20px 0;">
-      <a href="https://playzone.gg" target="_blank" style="
-        background: linear-gradient(90deg, #00ffe0, #0077ff);
-        padding: 10px 20px;
-        color: #fff;
-        font-weight: bold;
-        border-radius: 6px;
-        text-decoration: none;
-        text-transform: uppercase;
-        box-shadow: 0 0 15px #00ffe0;
-      ">Join via PLAYZONE</a>
-    </div>
+    
 
     <p style="font-size: 13px; color: #888;">
       ⚠️ Do not share these credentials with anyone.<br>
@@ -2605,85 +2915,148 @@ app.post("/payment/withdraw", async (req, res) => {
 })
 
 // -------------------- PAYMENT HISTORY --------------------
+// -------------------- PAYMENT HISTORY (ENHANCED) --------------------
 app.get("/payment/history/:user_id", async (req, res) => {
   try {
-    const payments = await Payment.find({ user_id: req.params.user_id }).sort({ createdAt: -1 })
-    res.status(200).json(payments)
+    const payments = await Payment.find({ user_id: req.params.user_id })
+      .sort({ createdAt: -1 })
+      .limit(100); // Limit to last 100 transactions
+    
+    console.log(`✅ Found ${payments.length} payment records for user ${req.params.user_id}`);
+    
+    res.status(200).json(payments);
   } catch (err) {
-    res.status(500).json({ message: "Server Error" })
+    console.error("❌ Error fetching payment history:", err);
+    res.status(500).json({ message: "Server Error" });
   }
-})
+});
+
+// Alternative endpoint (some code might use this one)
+app.get("/payments/:userId", async (req, res) => {
+  try {
+    const payments = await Payment.find({ user_id: req.params.userId })
+      .sort({ createdAt: -1 })
+      .limit(100);
+    
+    console.log(`✅ Found ${payments.length} payment records for user ${req.params.userId}`);
+    
+    res.json(payments);
+  } catch (error) {
+    console.error("❌ Error fetching payments:", error);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
 
 // ----------------------------
 //      TOURNAMENT REGISTRATION MANAGEMENT
 // ----------------------------
 // -------------------- TOURNAMENT REGISTRATION --------------------
+// -------------------- TOURNAMENT REGISTRATION (FIXED - NO SCHEMA CHANGES) --------------------
 app.post("/tournament/register", async (req, res) => {
   try {
-    const { user_id, team_name, tournament_id, payment_method } = req.body
+    const { user_id, team_name, tournament_id, payment_method } = req.body;
 
-    const user = await User.findById(user_id)
-    const tournament = await Tournament.findOne({ t_id: tournament_id })
-    if (!user || !tournament) return res.status(404).json({ message: "User or Tournament not found" })
+    console.log("📝 Registration request:", { user_id, team_name, tournament_id, payment_method });
 
-    // Already registered check
-    const existing = tournament.participants.find((p) => p.user_id.toString() === user_id)
-    if (existing) return res.status(400).json({ message: "Already registered" })
-
-    // Wallet check
-    if (payment_method === "wallet" && user.amount < tournament.entry_fee)
-      return res.status(400).json({ message: "Insufficient wallet balance" })
-
-    // Deduct if wallet
-    if (payment_method === "wallet") {
-      user.amount -= tournament.entry_fee
-      await user.save()
+    // Validate inputs
+    if (!user_id || !team_name || !tournament_id || !payment_method) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Add participant
+    const user = await User.findById(user_id);
+    const tournament = await Tournament.findOne({ t_id: tournament_id });
+    
+    if (!user) {
+      console.error("❌ User not found:", user_id);
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    if (!tournament) {
+      console.error("❌ Tournament not found:", tournament_id);
+      return res.status(404).json({ message: "Tournament not found" });
+    }
+
+    console.log("✅ Found user:", user.username, "Balance:", user.amount);
+    console.log("✅ Found tournament:", tournament.t_id, "Entry fee:", tournament.entry_fee);
+
+    // Already registered check
+    const existing = tournament.participants.find((p) => p.user_id.toString() === user_id);
+    if (existing) {
+      return res.status(400).json({ message: "Already registered for this tournament" });
+    }
+
+    // Wallet balance check
+    if (payment_method === "wallet") {
+      if (user.amount < tournament.entry_fee) {
+        return res.status(400).json({ 
+          message: "Insufficient wallet balance",
+          required: tournament.entry_fee,
+          current: user.amount
+        });
+      }
+
+      // Deduct entry fee from wallet
+      user.amount -= tournament.entry_fee;
+      await user.save();
+      console.log("💰 Deducted ₹" + tournament.entry_fee + " from wallet. New balance:", user.amount);
+    }
+
+    // Add participant to tournament
     tournament.participants.push({
       user_id: user._id,
       team_name,
       payment_status: payment_method === "wallet" ? "paid" : "pending",
-    })
-    await tournament.save()
-
-    // Add tournament to user's joined tournaments
-    if (!user.tournamentsJoined.includes(tournament._id)) {
-      user.tournamentsJoined.push(tournament._id);
-      user.gamingStats.totalTournaments += 1;
-      await user.save();
-    }
-
-    // Emit socket event for real-time updates
-    io.emit('tournamentJoined', {
-      userId: user._id,
-      tournamentId: tournament.t_id,
-      tournamentName: tournament.game,
-      teamName: team_name,
-      participantsCount: tournament.participants.length
     });
+    await tournament.save();
+    console.log("✅ Participant added to tournament");
 
-    // Payment record
-    const payment = new Payment({
-      p_id: "P" + Date.now(),
+    // Create payment record IMMEDIATELY
+    const paymentRecord = new Payment({
+      p_id: "P" + Date.now() + "_" + Math.random().toString(36).substr(2, 9),
       amount: tournament.entry_fee,
       p_type: "tournament",
       user_id: user._id,
       tournament_id: tournament.t_id,
+      p_date: new Date(),
       p_time: new Date().toLocaleTimeString(),
-    })
-    await payment.save()
+    });
+    await paymentRecord.save();
+    console.log("✅ Payment record created:", paymentRecord.p_id);
+
+    // Emit socket event for real-time updates (if socket is available)
+    if (typeof io !== 'undefined') {
+      io.emit('tournamentJoined', {
+        userId: user._id,
+        tournamentId: tournament.t_id,
+        tournamentName: tournament.game,
+        teamName: team_name,
+        participantsCount: tournament.participants.length
+      });
+    }
 
     res.status(200).json({
-      message: `Registered successfully via ${payment_method}`,
+      message: `Successfully registered for ${tournament.game} tournament!`,
       balance: user.amount,
-    })
+      tournament: {
+        id: tournament.t_id,
+        game: tournament.game,
+        teamName: team_name,
+      },
+      payment: {
+        id: paymentRecord.p_id,
+        amount: paymentRecord.amount,
+        type: paymentRecord.p_type
+      }
+    });
+
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ message: "Server error" })
+    console.error("❌ Registration error:", err);
+    res.status(500).json({ 
+      message: "Registration failed. Please try again.",
+      error: err.message 
+    });
   }
-})
+});
 
 // ----------------------Tournament History ----------------
 // Get tournaments joined by a user
@@ -2789,3 +3162,369 @@ app.post("/tournament/cancel", async (req, res) => {
     res.status(500).json({ message: "Server error" })
   }
 })
+
+
+// ==========================
+//  CONTACT MODEL
+// ==========================
+const contactSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true },
+    subject: { type: String, required: true },
+    message: { type: String, required: true },
+    status: { type: String, enum: ["pending", "resolved"], default: "pending" },
+    adminReply: { type: String, default: "" },
+    repliedAt: { type: Date },
+  },
+  { timestamps: true }
+);
+
+const Contact = mongoose.model("contact", contactSchema);
+
+// ==========================
+//  CONTACT FORM ROUTES
+// ==========================
+
+// Submit contact form
+app.post("/contact/submit", async (req, res) => {
+  try {
+    const { name, email, subject, message } = req.body;
+
+    // Validation
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: "Invalid email format" });
+    }
+
+    // Create contact entry
+    const contact = new Contact({
+      name,
+      email,
+      subject,
+      message,
+      status: "pending",
+    });
+
+    await contact.save();
+
+    // Send notification email to admin
+    const admin = await Admin.findOne({ isEmailVerified: true, notificationEmail: { $ne: null } });
+    
+    if (admin && admin.notificationEmail) {
+      try {
+        await transporter.sendMail({
+          from: process.env.SMTP_USER,
+          to: admin.notificationEmail,
+          subject: `🔔 New Contact Form Submission - ${subject}`,
+          html: `
+            <div style="
+              background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+              color: #fff;
+              font-family: 'Segoe UI', Roboto, sans-serif;
+              padding: 35px;
+              border-radius: 15px;
+              text-align: center;
+              box-shadow: 0 0 30px rgba(0,0,0,0.6);
+              max-width: 600px;
+              margin: auto;
+            ">
+              <h1 style="font-size: 26px; color: #00ffcc; margin-bottom: 20px;">
+                📩 NEW CONTACT FORM SUBMISSION
+              </h1>
+              
+              <div style="
+                background: rgba(0, 255, 200, 0.1);
+                border: 1px solid #00ffcc;
+                border-radius: 8px;
+                padding: 20px;
+                margin: 20px 0;
+                text-align: left;
+              ">
+                <p style="margin: 8px 0; color: #bbb;"><strong>From:</strong> ${name}</p>
+                <p style="margin: 8px 0; color: #bbb;"><strong>Email:</strong> ${email}</p>
+                <p style="margin: 8px 0; color: #bbb;"><strong>Subject:</strong> ${subject}</p>
+                <p style="margin: 8px 0; color: #bbb;"><strong>Message:</strong></p>
+                <p style="
+                  background: rgba(0,0,0,0.3);
+                  padding: 15px;
+                  border-radius: 6px;
+                  color: #ddd;
+                  margin-top: 10px;
+                  line-height: 1.6;
+                ">${message}</p>
+              </div>
+              
+              
+              
+              <hr style="border: none; border-top: 1px solid #333; margin: 25px 0;">
+              <p style="font-size: 12px; color: #888;">
+                Powered by <b>PLAYZONE</b> 🎯
+              </p>
+            </div>
+          `,
+        });
+        console.log("✅ Contact form notification sent to admin");
+      } catch (emailErr) {
+        console.error("❌ Failed to send admin notification:", emailErr);
+      }
+    }
+
+    // Send confirmation email to user
+    try {
+      await transporter.sendMail({
+        from: process.env.SMTP_USER,
+        to: email,
+        subject: "✅ We Received Your Message - PLAYZONE Support",
+        html: `
+          <div style="
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            padding: 35px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.6);
+            max-width: 550px;
+            margin: auto;
+          ">
+            <h1 style="font-size: 26px; color: #00ffcc; margin-bottom: 20px;">
+              ✅ MESSAGE RECEIVED!
+            </h1>
+            
+            <p style="font-size: 16px; color: #c9c9c9; margin-bottom: 20px;">
+              Hello <strong>${name}</strong>,
+            </p>
+            
+            <p style="font-size: 15px; line-height: 1.6; color: #ddd;">
+              Thank you for contacting PLAYZONE! We've received your message and our team will get back to you within 24-48 hours.
+            </p>
+            
+            <div style="
+              background: rgba(0, 255, 200, 0.1);
+              border: 1px solid #00ffcc;
+              border-radius: 8px;
+              padding: 20px;
+              margin: 20px 0;
+              text-align: left;
+            ">
+              <h3 style="color: #00ffcc; margin-top: 0;">Your Message:</h3>
+              <p style="margin: 8px 0; color: #bbb;"><strong>Subject:</strong> ${subject}</p>
+              <p style="
+                background: rgba(0,0,0,0.3);
+                padding: 12px;
+                border-radius: 6px;
+                color: #ddd;
+                margin-top: 10px;
+              ">${message}</p>
+            </div>
+            
+            <p style="font-size: 14px; color: #bbb; margin-top: 20px;">
+              Need urgent assistance? Join our Discord community or check our FAQ section.
+            </p>
+            
+            <hr style="border: none; border-top: 1px solid #333; margin: 25px 0;">
+            <p style="font-size: 12px; color: #888;">
+              Powered by <b>PLAYZONE</b> 🎯<br/>
+              <span style="color:#555;">"Where every gamer becomes a legend."</span>
+            </p>
+          </div>
+        `,
+      });
+      console.log("✅ Confirmation email sent to user");
+    } catch (emailErr) {
+      console.error("❌ Failed to send confirmation email:", emailErr);
+    }
+
+    res.status(201).json({
+      message: "Message sent successfully! We'll get back to you soon.",
+      contactId: contact._id,
+    });
+  } catch (err) {
+    console.error("❌ Contact form error:", err);
+    res.status(500).json({ message: "Failed to submit contact form" });
+  }
+});
+
+// Get all contact messages (Admin only)
+app.get("/admin/contacts", async (req, res) => {
+  try {
+    const { status, search } = req.query;
+
+    let query = {};
+
+    // Filter by status
+    if (status && status !== "all") {
+      query.status = status;
+    }
+
+    // Search by name, email, or subject
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { subject: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const contacts = await Contact.find(query)
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    const stats = {
+      total: await Contact.countDocuments(),
+      pending: await Contact.countDocuments({ status: "pending" }),
+      resolved: await Contact.countDocuments({ status: "resolved" }),
+    };
+
+    res.json({ contacts, stats });
+  } catch (err) {
+    console.error("❌ Error fetching contacts:", err);
+    res.status(500).json({ message: "Failed to fetch contacts" });
+  }
+});
+
+// Mark contact as resolved
+app.put("/admin/contacts/:id/resolve", async (req, res) => {
+  try {
+    const contact = await Contact.findByIdAndUpdate(
+      req.params.id,
+      { status: "resolved" },
+      { new: true }
+    );
+
+    if (!contact) {
+      return res.status(404).json({ message: "Contact not found" });
+    }
+
+    res.json({ message: "Contact marked as resolved", contact });
+  } catch (err) {
+    console.error("❌ Error resolving contact:", err);
+    res.status(500).json({ message: "Failed to resolve contact" });
+  }
+});
+
+// Reply to contact
+app.post("/admin/contacts/:id/reply", async (req, res) => {
+  try {
+    const { reply } = req.body;
+
+    if (!reply) {
+      return res.status(400).json({ message: "Reply message is required" });
+    }
+
+    const contact = await Contact.findById(req.params.id);
+
+    if (!contact) {
+      return res.status(404).json({ message: "Contact not found" });
+    }
+
+    // Update contact
+    contact.adminReply = reply;
+    contact.status = "resolved";
+    contact.repliedAt = new Date();
+    await contact.save();
+
+    // Send reply email to user
+    await transporter.sendMail({
+      from: process.env.SMTP_USER,
+      to: contact.email,
+      subject: `Re: ${contact.subject} - PLAYZONE Support`,
+      html: `
+        <div style="
+          background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+          color: #fff;
+          font-family: 'Segoe UI', Roboto, sans-serif;
+          padding: 35px;
+          border-radius: 15px;
+          text-align: center;
+          box-shadow: 0 0 30px rgba(0,0,0,0.6);
+          max-width: 600px;
+          margin: auto;
+        ">
+          <h1 style="font-size: 26px; color: #00ffcc; margin-bottom: 20px;">
+            💬 PLAYZONE SUPPORT REPLY
+          </h1>
+          
+          <p style="font-size: 16px; color: #c9c9c9; margin-bottom: 20px;">
+            Hello <strong>${contact.name}</strong>,
+          </p>
+          
+          <div style="
+            background: rgba(0, 255, 200, 0.1);
+            border: 1px solid #00ffcc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+          ">
+            <h3 style="color: #00ffcc; margin-top: 0;">Your Original Message:</h3>
+            <p style="margin: 8px 0; color: #bbb;"><strong>Subject:</strong> ${contact.subject}</p>
+            <p style="
+              background: rgba(0,0,0,0.3);
+              padding: 12px;
+              border-radius: 6px;
+              color: #ddd;
+              margin-top: 10px;
+            ">${contact.message}</p>
+          </div>
+          
+          <div style="
+            background: rgba(0, 119, 255, 0.1);
+            border: 1px solid #0077ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+          ">
+            <h3 style="color: #0077ff; margin-top: 0;">Our Reply:</h3>
+            <p style="
+              background: rgba(0,0,0,0.3);
+              padding: 15px;
+              border-radius: 6px;
+              color: #ddd;
+              line-height: 1.6;
+            ">${reply}</p>
+          </div>
+          
+          <p style="font-size: 14px; color: #bbb; margin-top: 20px;">
+            Have more questions? Feel free to contact us again!
+          </p>
+          
+          
+          
+          <hr style="border: none; border-top: 1px solid #333; margin: 25px 0;">
+          <p style="font-size: 12px; color: #888;">
+            Powered by <b>PLAYZONE</b> 🎯<br/>
+            <span style="color:#555;">"Where every gamer becomes a legend."</span>
+          </p>
+        </div>
+      `,
+    });
+
+    res.json({ message: "Reply sent successfully", contact });
+  } catch (err) {
+    console.error("❌ Error sending reply:", err);
+    res.status(500).json({ message: "Failed to send reply" });
+  }
+});
+
+// Delete contact
+app.delete("/admin/contacts/:id", async (req, res) => {
+  try {
+    const contact = await Contact.findByIdAndDelete(req.params.id);
+
+    if (!contact) {
+      return res.status(404).json({ message: "Contact not found" });
+    }
+
+    res.json({ message: "Contact deleted successfully" });
+  } catch (err) {
+    console.error("❌ Error deleting contact:", err);
+    res.status(500).json({ message: "Failed to delete contact" });
+  }
+});

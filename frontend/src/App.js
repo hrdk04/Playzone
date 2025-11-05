@@ -23,7 +23,7 @@ import History from "./userSide/History";
 import Profile from "./userSide/Profile";
 import PaymentPage from "./userSide/PaymentPage";
 import FinalResults from "./userSide/FinalResults.js";
-import ChatPage from "./pages/ChatPage";
+import ChatPage from "./userSide/ChatPage";
 
 // Admin Layout
 import AdminLayout from "./adminside/AdminLayout";
