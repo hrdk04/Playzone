@@ -352,7 +352,7 @@ const TournamentForm = ({ mode = "create" }) => {
             
             {/* Thumbnail Preview */}
             {form.thumbnail && (
-              <div style={{ marginBottom: "0.5rem" }}>
+              <div style={{ marginBottom: "0.5rem", textAlign:'center' }}>
                 <img 
                   src={form.thumbnail} 
                   alt="Tournament Thumbnail"
