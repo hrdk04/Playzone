@@ -661,3 +661,4 @@ const styles = {
 };
 
 export default FinalResults;
+

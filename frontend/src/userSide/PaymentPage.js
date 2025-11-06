@@ -15,6 +15,7 @@ export default function PaymentPage() {
   const [modalType, setModalType] = useState("deposit")
   const [amount, setAmount] = useState("")
   const [processing, setProcessing] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   
   // Payment Gateway States
   const [showPaymentGateway, setShowPaymentGateway] = useState(false)
@@ -34,48 +35,48 @@ export default function PaymentPage() {
   const location = useLocation()
   const navigate = useNavigate()
 
-useEffect(() => {
-  const fetchUser = async () => {
-    // Prevent duplicate calls
-    if (user) return
-    
-    const loadingToast = toast.loading("Loading wallet data...")
-    
-    try {
-      const localUser = JSON.parse(localStorage.getItem("user"))
+  // Responsive detection
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768)
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (user) return
       
-      // Check for local user first
-      if (localUser?._id) {
-        const u = await axios.get(`http://localhost:5000/user/id/${localUser._id}`)
-        setUser(u.data)
-        await loadHistory(u.data._id)
-        toast.success("Wallet loaded successfully!", {
-  position: 'top-right'
-}, { id: loadingToast },)
-        return 
+      const loadingToast = toast.loading("Loading wallet data...")
+      
+      try {
+        const localUser = JSON.parse(localStorage.getItem("user"))
+        
+        if (localUser?._id) {
+          const u = await axios.get(`http://localhost:5000/user/id/${localUser._id}`)
+          setUser(u.data)
+          await loadHistory(u.data._id)
+          toast.success("Wallet loaded successfully!", { id: loadingToast })
+          return 
+        }
+        
+        if (emailOrUsername) {
+          const u = await axios.get(`http://localhost:5000/user/${emailOrUsername}`)
+          setUser(u.data)
+          await loadHistory(u.data._id)
+          toast.success("Wallet loaded successfully!", { id: loadingToast })
+          return
+        }
+        
+        toast.dismiss(loadingToast)
+        
+      } catch (err) {
+        console.error(err)
+        toast.error("Failed to load wallet data", { id: loadingToast })
       }
-      
-      if (emailOrUsername) {
-        const u = await axios.get(`http://localhost:5000/user/${emailOrUsername}`)
-        setUser(u.data)
-        await loadHistory(u.data._id)
-        toast.success("Wallet loaded successfully!", {
-  position: 'top-right'
-}, { id: loadingToast },)
-        return
-      }
-      
-      // If neither condition is met, dismiss loading toast
-      toast.dismiss(loadingToast)
-      
-    } catch (err) {
-      console.error(err)
-      toast.error("Failed to load wallet data", { id: loadingToast })
     }
-  }
-  
-  fetchUser()
-}, []) // Remove emailOrUsername from dependencies
+    
+    fetchUser()
+  }, [])
 
   useEffect(() => {
     const s = location.state
@@ -104,6 +105,37 @@ useEffect(() => {
       setLoadingHistory(false)
     }
   }
+
+  // ✅ Calculate balance before and after for each transaction
+  const calculateBalanceHistory = () => {
+    if (!history.length || !user) return []
+
+    let runningBalance = user.amount
+    const enrichedHistory = []
+
+    // Process from most recent to oldest
+    for (let i = 0; i < history.length; i++) {
+      const transaction = history[i]
+      const isDebit = transaction.p_type === "withdraw" || transaction.p_type === "tournament"
+      
+      const balanceAfter = runningBalance
+      const balanceBefore = isDebit 
+        ? runningBalance + transaction.amount 
+        : runningBalance - transaction.amount
+
+      enrichedHistory.push({
+        ...transaction,
+        balanceBefore,
+        balanceAfter,
+      })
+
+      runningBalance = balanceBefore
+    }
+
+    return enrichedHistory
+  }
+
+  const enrichedHistory = calculateBalanceHistory()
 
   const openModal = (type) => {
     setModalType(type)
@@ -199,7 +231,6 @@ useEffect(() => {
   }
 
   const handlePaymentSubmit = () => {
-    // Validate based on payment method
     if (paymentMethod === "upi") {
       if (!upiId) {
         toast.error("Please enter UPI ID", { duration: 3000 })
@@ -242,11 +273,9 @@ useEffect(() => {
       return
     }
 
-    // Move to processing step
     setPaymentStep(3)
     toast.loading("Connecting to payment gateway...", { duration: 1500 })
     
-    // Simulate payment processing
     setTimeout(() => {
       processPayment()
     }, 3000)
@@ -268,7 +297,6 @@ useEffect(() => {
       setUser((prev) => ({ ...prev, amount: newBalance }))
       await loadHistory(user._id)
       
-      // Show success screen
       setPaymentStep(4)
       toast.success(`Payment successful! ₹${amount} added to wallet`, { 
         id: paymentToast,
@@ -276,7 +304,6 @@ useEffect(() => {
         icon: "🎉"
       })
       
-      // Check if there's a pending tournament registration
       setTimeout(() => {
         const pendingRegistration = location.state?.action === "topup_then_register" && location.state?.meta
 
@@ -322,17 +349,15 @@ useEffect(() => {
 
   return (
     <div style={styles.page}>
-      {/* Toast Container - Now with Highest Z-Index */}
       <Toaster
         position="top-center"
         reverseOrder={false}
         gutter={8}
         containerStyle={{
           top: 20,
-          zIndex: 99999, // Highest z-index to appear above everything
+          zIndex: 99999,
         }}
         toastOptions={{
-          // Default options
           duration: 3000,
           style: {
             background: "linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)",
@@ -347,7 +372,6 @@ useEffect(() => {
             minWidth: "280px",
             fontWeight: "500",
           },
-          // Success
           success: {
             duration: 3000,
             style: {
@@ -360,7 +384,6 @@ useEffect(() => {
               secondary: "#fff",
             },
           },
-          // Error
           error: {
             duration: 4000,
             style: {
@@ -373,7 +396,6 @@ useEffect(() => {
               secondary: "#fff",
             },
           },
-          // Loading
           loading: {
             style: {
               background: "linear-gradient(135deg, #1a2a3a 0%, #0d151f 100%)",
@@ -383,14 +405,6 @@ useEffect(() => {
             iconTheme: {
               primary: "#2196f3",
               secondary: "#fff",
-            },
-          },
-          // Custom styles
-          blank: {
-            style: {
-              background: "linear-gradient(135deg, #2a2a1a 0%, #1a1a0d 100%)",
-              border: "2px solid rgba(255, 193, 7, 0.4)",
-              boxShadow: "0 10px 40px rgba(255, 193, 7, 0.3), 0 0 20px rgba(255, 193, 7, 0.2)",
             },
           },
         }}
@@ -436,21 +450,55 @@ useEffect(() => {
           <div style={styles.historyContainer}>
             {loadingHistory ? (
               <p style={styles.emptyState}>Loading...</p>
-            ) : history.length === 0 ? (
+            ) : enrichedHistory.length === 0 ? (
               <p style={styles.emptyState}>No transactions yet.</p>
             ) : (
               <div style={styles.tableWrapper}>
-                <table style={styles.table}>
-                  <thead>
-                    <tr>
-                      <th style={styles.th}>Date</th>
-                      <th style={styles.th}>Type</th>
-                      <th style={styles.th}>Amount</th>
-                      <th style={styles.th}>Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.slice(0, 10).map((h) => {
+                {/* ✅ DESKTOP VIEW - Full Table */}
+                {!isMobile ? (
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th style={styles.th}>Date</th>
+                        <th style={styles.th}>Type</th>
+                        <th style={styles.th}>Amount</th>
+                        <th style={styles.th}>Before</th>
+                        <th style={styles.th}>After</th>
+                        <th style={styles.th}>Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {enrichedHistory.slice(0, 10).map((h) => {
+                        const isDebit = h.p_type === "withdraw" || h.p_type === "tournament"
+                        const color = isDebit ? "#ff5c5c" : "#4eff8c"
+                        const amountDisplay = isDebit ? `-₹${h.amount}` : `+₹${h.amount}`
+                        let typeDisplay = h.p_type
+                        if (h.p_type === "tournament") typeDisplay = `Tournament Fee`
+                        if (h.p_type === "prize") typeDisplay = `Prize Won`
+                        if (h.p_type === "refund") typeDisplay = `Refund`
+                        if (h.p_type === "deposit") typeDisplay = `Deposit`
+
+                        return (
+                          <tr key={h._id} style={styles.tr}>
+                            <td style={styles.td}>{new Date(h.p_date).toLocaleDateString()}</td>
+                            <td style={styles.td}>{typeDisplay}</td>
+                            <td style={{ ...styles.td, color, fontWeight: "700", fontSize: "0.95rem" }}>
+                              {amountDisplay}
+                            </td>
+                            <td style={{ ...styles.td, color: "#aaa" }}>₹{h.balanceBefore.toFixed(2)}</td>
+                            <td style={{ ...styles.td, color: "#4eff8c", fontWeight: "600" }}>
+                              ₹{h.balanceAfter.toFixed(2)}
+                            </td>
+                            <td style={styles.td}>{h.p_time}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                ) : (
+                  /* ✅ MOBILE VIEW - Card Layout */
+                  <div style={styles.mobileCards}>
+                    {enrichedHistory.slice(0, 10).map((h) => {
                       const isDebit = h.p_type === "withdraw" || h.p_type === "tournament"
                       const color = isDebit ? "#ff5c5c" : "#4eff8c"
                       const amountDisplay = isDebit ? `-₹${h.amount}` : `+₹${h.amount}`
@@ -461,16 +509,37 @@ useEffect(() => {
                       if (h.p_type === "deposit") typeDisplay = `Deposit`
 
                       return (
-                        <tr key={h._id} style={styles.tr}>
-                          <td style={styles.td}>{new Date(h.p_date).toLocaleDateString()}</td>
-                          <td style={styles.td}>{typeDisplay}</td>
-                          <td style={{ ...styles.td, color, fontWeight: "600" }}>{amountDisplay}</td>
-                          <td style={styles.td}>{h.p_time}</td>
-                        </tr>
+                        <div key={h._id} style={styles.mobileCard}>
+                          <div style={styles.cardHeader}>
+                            <div style={styles.cardType}>{typeDisplay}</div>
+                            <div style={{ ...styles.cardAmount, color }}>{amountDisplay}</div>
+                          </div>
+                          
+                          <div style={styles.cardDetails}>
+                            <div style={styles.cardRow}>
+                              <span style={styles.cardLabel}>Date:</span>
+                              <span style={styles.cardValue}>
+                                {new Date(h.p_date).toLocaleDateString()} • {h.p_time}
+                              </span>
+                            </div>
+                            
+                            <div style={styles.balanceFlow}>
+                              <div style={styles.balanceItem}>
+                                <span style={styles.balanceLabel}>Before</span>
+                                <span style={styles.balanceBefore}>₹{h.balanceBefore.toFixed(2)}</span>
+                              </div>
+                              <div style={styles.arrow}>{isDebit ? "→" : "←"}</div>
+                              <div style={styles.balanceItem}>
+                                <span style={styles.balanceLabel}>After</span>
+                                <span style={styles.balanceAfter}>₹{h.balanceAfter.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       )
                     })}
-                  </tbody>
-                </table>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -530,12 +599,11 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Payment Gateway Modal */}
+      {/* Payment Gateway Modal - Keep existing code */}
       {showPaymentGateway && (
         <div style={styles.paymentOverlay}>
           <div style={styles.paymentGateway} onClick={(e) => e.stopPropagation()}>
             
-            {/* Header */}
             <div style={styles.gatewayHeader}>
               <div style={styles.headerLeft}>
                 <button 
@@ -557,13 +625,11 @@ useEffect(() => {
               <div style={styles.secureBadge}>🔒 Secure</div>
             </div>
 
-            {/* Payment Amount Display */}
             <div style={styles.amountDisplay}>
               <span style={styles.amountLabel}>Amount to Pay</span>
               <span style={styles.amountValue}>₹{amount}</span>
             </div>
 
-            {/* Step 1: Payment Method Selection */}
             {paymentStep === 1 && (
               <div style={styles.paymentContent}>
                 <h4 style={styles.stepTitle}>Select Payment Method</h4>
@@ -624,11 +690,9 @@ useEffect(() => {
               </div>
             )}
 
-            {/* Step 2: Payment Details */}
             {paymentStep === 2 && (
               <div style={styles.paymentContent}>
                 
-                {/* UPI Payment */}
                 {paymentMethod === "upi" && (
                   <div style={styles.formContainer}>
                     <h4 style={styles.stepTitle}>Enter UPI Details</h4>
@@ -648,7 +712,6 @@ useEffect(() => {
                   </div>
                 )}
 
-                {/* Card Payment */}
                 {paymentMethod === "card" && (
                   <div style={styles.formContainer}>
                     <h4 style={styles.stepTitle}>Enter Card Details</h4>
@@ -714,7 +777,6 @@ useEffect(() => {
                   </div>
                 )}
 
-                {/* Net Banking */}
                 {paymentMethod === "netbanking" && (
                   <div style={styles.formContainer}>
                     <h4 style={styles.stepTitle}>Select Your Bank</h4>
@@ -735,7 +797,6 @@ useEffect(() => {
                   </div>
                 )}
 
-                {/* Wallets */}
                 {paymentMethod === "wallet" && (
                   <div style={styles.formContainer}>
                     <h4 style={styles.stepTitle}>Select Wallet</h4>
@@ -767,7 +828,6 @@ useEffect(() => {
               </div>
             )}
 
-            {/* Step 3: Processing */}
             {paymentStep === 3 && (
               <div style={styles.processingContainer}>
                 <div style={styles.spinner}></div>
@@ -777,7 +837,6 @@ useEffect(() => {
               </div>
             )}
 
-            {/* Step 4: Success */}
             {paymentStep === 4 && (
               <div style={styles.successContainer}>
                 <div style={styles.successIcon}>✓</div>
@@ -801,7 +860,6 @@ useEffect(() => {
               </div>
             )}
 
-            {/* Footer */}
             <div style={styles.gatewayFooter}>
               <p style={styles.footerText}>🎓 College Project Demo - No Real Money Transaction</p>
             </div>
@@ -896,14 +954,14 @@ const styles = {
   transactionsSection: {
     marginTop: "30px",
     width: "100%",
-    maxWidth: "800px",
+    maxWidth: "900px",
   },
   sectionTitle: {
     fontSize: "clamp(1rem, 3vw, 1.2rem)",
     marginBottom: "12px",
   },
   historyContainer: {
-    maxHeight: "350px",
+    maxHeight: "500px",
     overflowY: "auto",
     borderRadius: "8px",
     background: "rgba(255,255,255,0.02)",
@@ -917,23 +975,111 @@ const styles = {
     width: "100%",
     borderCollapse: "collapse",
     fontSize: "clamp(0.75rem, 2vw, 0.9rem)",
-    minWidth: "500px",
+    minWidth: "700px",
   },
   th: {
-    padding: "clamp(8px, 2vw, 12px)",
+    padding: "clamp(10px, 2vw, 14px)",
     background: "rgba(18, 21, 52, 0.84)",
     position: "sticky",
     top: 0,
     textAlign: "left",
-    fontSize: "clamp(0.75rem, 2vw, 0.9rem)",
+    fontSize: "clamp(0.8rem, 2vw, 0.95rem)",
     zIndex: 1,
+    fontWeight: "600",
+    borderBottom: "2px solid rgba(255,255,255,0.1)",
   },
   td: {
-    padding: "clamp(8px, 2vw, 10px)",
-    fontSize: "clamp(0.75rem, 2vw, 0.875rem)",
+    padding: "clamp(10px, 2vw, 12px)",
+    fontSize: "clamp(0.8rem, 2vw, 0.9rem)",
+    borderBottom: "1px solid rgba(255,255,255,0.03)",
   },
   tr: {
+    transition: "background 0.2s ease",
+  },
+  // ✅ MOBILE CARD STYLES
+  mobileCards: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+    padding: "12px",
+  },
+  mobileCard: {
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: "12px",
+    padding: "16px",
+    transition: "all 0.3s ease",
+  },
+  cardHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "12px",
+    paddingBottom: "12px",
     borderBottom: "1px solid rgba(255,255,255,0.05)",
+  },
+  cardType: {
+    fontSize: "0.95rem",
+    fontWeight: "600",
+    color: "#fff",
+  },
+  cardAmount: {
+    fontSize: "1.1rem",
+    fontWeight: "700",
+  },
+  cardDetails: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+  },
+  cardRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    fontSize: "0.85rem",
+  },
+  cardLabel: {
+    color: "#aaa",
+  },
+  cardValue: {
+    color: "#fff",
+    fontWeight: "500",
+  },
+  balanceFlow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    background: "rgba(0,0,0,0.2)",
+    padding: "12px",
+    borderRadius: "8px",
+    marginTop: "8px",
+  },
+  balanceItem: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    flex: 1,
+  },
+  balanceLabel: {
+    fontSize: "0.7rem",
+    color: "#888",
+    marginBottom: "4px",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  },
+  balanceBefore: {
+    fontSize: "0.95rem",
+    fontWeight: "600",
+    color: "#aaa",
+  },
+  balanceAfter: {
+    fontSize: "0.95rem",
+    fontWeight: "700",
+    color: "#4eff8c",
+  },
+  arrow: {
+    fontSize: "1.2rem",
+    color: "#00FFCC",
+    margin: "0 8px",
   },
   emptyState: {
     textAlign: "center",
@@ -1012,7 +1158,7 @@ const styles = {
     borderRadius: "6px",
   },
 
-  // Payment Gateway Styles
+  // Payment Gateway Styles (keep existing)
   paymentOverlay: {
     position: "fixed",
     inset: 0,
@@ -1341,6 +1487,19 @@ styleSheet.textContent = `
   
   div::-webkit-scrollbar-thumb:hover {
     background: rgba(255,255,255,0.2);
+  }
+
+  /* Table hover effect */
+  tbody tr:hover {
+    background: rgba(255,255,255,0.05) !important;
+  }
+
+  /* Mobile card hover effect */
+  @media (min-width: 769px) {
+    .mobile-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 255, 204, 0.2);
+    }
   }
 `
 document.head.appendChild(styleSheet)
