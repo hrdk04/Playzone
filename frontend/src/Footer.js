@@ -103,7 +103,7 @@ export default function Footer() {
               onMouseEnter={(e) => handleHover(e, true)}
               onMouseLeave={(e) => handleHover(e, false)}
             >
-              {item} Us
+              {item}
             </Link>
           ))}
         </div>
