@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import axios from "axios"
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import theme from "../theme"
 import UserSideNav from "./UserSideNav"
 
@@ -18,6 +20,7 @@ export default function Tournaments() {
   const location = useLocation()
 
   const [filter, setFilter] = useState("all")
+  const [dateFilter, setDateFilter] = useState("all") // ✅ NEW: Date filter state
   const [viewAll, setViewAll] = useState({ high: false, mid: false, low: false })
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
@@ -74,8 +77,45 @@ export default function Tournaments() {
         }))
         setTournaments(data)
       })
-      .catch((err) => console.error("Error fetching tournaments:", err))
+      .catch((err) => {
+        console.error("Error fetching tournaments:", err)
+        toast.error("Failed to load tournaments")
+      })
   }, [])
+
+  // ✅ NEW: Get available dates dynamically
+  const getAvailableDates = () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+    
+    // Get unique dates from tournaments
+    const uniqueDates = [...new Set(tournaments.map(t => t.date).filter(Boolean))]
+    
+    const dateOptions = []
+    
+    uniqueDates.forEach(date => {
+      if (date === today) {
+        dateOptions.push({ value: date, label: "Today", sortOrder: 0 })
+      } else if (date === yesterday) {
+        dateOptions.push({ value: date, label: "Yesterday", sortOrder: 1 })
+      } else {
+        const d = new Date(date)
+        const label = d.toLocaleDateString('en-IN', { 
+          day: '2-digit', 
+          month: 'short', 
+          year: 'numeric',
+          weekday: 'short'
+        })
+        dateOptions.push({ value: date, label: `${label}`, sortOrder: 2 })
+      }
+    })
+    
+    // Sort: Today first, Yesterday second, then others by date descending
+    return dateOptions.sort((a, b) => {
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder
+      return new Date(b.value) - new Date(a.value)
+    })
+  }
 
   const handleTournamentClick = (tournament) => {
     // Handle completed tournaments differently
@@ -85,7 +125,9 @@ export default function Tournaments() {
         navigate(`/tournaments/results/${tournament.id}`)
       } else {
         // Show message for completed tournaments without results
-        alert("Tournament completed but results are not yet published. Please check back later.")
+        toast.info("Tournament completed but results are not yet published. Please check back later.", {
+          autoClose: 4000
+        })
       }
       return
     }
@@ -101,7 +143,10 @@ export default function Tournaments() {
 
   const handleTeamSave = (e) => {
     e.preventDefault()
-    if (!teamName.trim()) return
+    if (!teamName.trim()) {
+      toast.warning("Please enter a team name")
+      return
+    }
     setShowTeamForm(false)
     setShowConfirmPay(true)
   }
@@ -120,7 +165,7 @@ export default function Tournaments() {
         }
       }
       if (!user?._id) {
-        alert("Please login again.")
+        toast.error("Please login again")
         navigate("/login")
         return
       }
@@ -131,16 +176,19 @@ export default function Tournaments() {
 
       if (balance < fee) {
         const deficit = Math.max(fee - balance, 1)
-        navigate("/payments", {
-          state: {
-            action: "topup_then_register",
-            topUpFor: "tournament",
-            requiredAmount: deficit,
-            returnTo: location.pathname + location.search, // Preserve exact location
-            meta: selectedTournament,
-            teamName: teamName,
-          },
-        })
+        toast.info("Insufficient balance. Redirecting to payment page...")
+        setTimeout(() => {
+          navigate("/payments", {
+            state: {
+              action: "topup_then_register",
+              topUpFor: "tournament",
+              requiredAmount: deficit,
+              returnTo: location.pathname + location.search,
+              meta: selectedTournament,
+              teamName: teamName,
+            },
+          })
+        }, 1500)
         return
       }
 
@@ -148,10 +196,14 @@ export default function Tournaments() {
         user_id: user._id,
         tournament_id: selectedTournament.id,
         team_name: teamName,
-        payment_method: "wallet", // was pay_method; fixing to match server.js
+        payment_method: "wallet",
       }
+      
       const reg = await axios.post("http://localhost:5000/tournament/register", payload)
-      alert(reg.data?.message || "Registered successfully!")
+      
+      toast.success(reg.data?.message || "Registered successfully! 🎉", {
+        autoClose: 3000
+      })
 
       // Refresh user balance from backend and persist so Dashboard reflects deduction
       try {
@@ -166,7 +218,9 @@ export default function Tournaments() {
       setSelectedTournament(null)
     } catch (err) {
       console.error("Register error:", err)
-      alert(err?.response?.data?.message || "Registration failed.")
+      toast.error(err?.response?.data?.message || "Registration failed. Please try again.", {
+        autoClose: 4000
+      })
     } finally {
       setLoading(false)
     }
@@ -174,13 +228,31 @@ export default function Tournaments() {
 
   const handleBack = () => navigate(-1)
 
+  // ✅ UPDATED: Filter logic with date filter
   const filtered = tournaments.filter((t) => {
-    if (filter === "all") return t.status === "pending" || t.status === "running"
-    if (filter === "pending") return t.status === "pending"
-    if (filter === "running") return t.status === "running"
-    if (filter === "upcoming") return t.status === "pending" || t.status === "running"
-    if (filter === "completed") return t.status === "completed"
-    return t.status === filter
+    // Status filter
+    let statusMatch = true
+    if (filter === "all") {
+      statusMatch = t.status === "pending" || t.status === "running"
+    } else if (filter === "pending") {
+      statusMatch = t.status === "pending"
+    } else if (filter === "running") {
+      statusMatch = t.status === "running"
+    } else if (filter === "upcoming") {
+      statusMatch = t.status === "pending" || t.status === "running"
+    } else if (filter === "completed") {
+      statusMatch = t.status === "completed"
+    } else {
+      statusMatch = t.status === filter
+    }
+    
+    // Date filter
+    let dateMatch = true
+    if (dateFilter !== "all") {
+      dateMatch = t.date === dateFilter
+    }
+    
+    return statusMatch && dateMatch
   })
 
   const high = filtered.filter((t) => t.poolPrize > 1000)
@@ -357,9 +429,9 @@ export default function Tournaments() {
                   onClick={(e) => {
                     e.stopPropagation()
                     if (t.result_published) {
-                      navigate(`/tournaments/results/${t.id}`,"_blank")
+                      navigate(`/tournaments/results/${t.id}`)
                     } else {
-                      alert("Tournament completed but results are not yet published. Please check back later.")
+                      toast.info("Tournament completed but results are not yet published. Please check back later.")
                     }
                   }}
                   onMouseEnter={(e) => {
@@ -420,6 +492,21 @@ export default function Tournaments() {
         padding: isDashboardView ? "1rem" : "2rem",
       }}
     >
+      {/* Toast Container */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+        style={{ zIndex: 9999 }}
+      />
+
       {isLoggedIn && (
         <>
           <UserSideNav />
@@ -468,71 +555,136 @@ export default function Tournaments() {
           Playzone Tournaments
         </h1>
 
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <div style={{ marginBottom: "1rem", color: theme.colors.lightGray }}>
-            Showing {filtered.length} tournament{filtered.length !== 1 ? 's' : ''} 
-            {filter !== "all" && ` (${filter} tournaments)`}
+        {/* ✅ FILTERS SECTION */}
+        <div style={{ marginBottom: "2rem" }}>
+          {/* Status Filters */}
+          <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+            <div style={{ marginBottom: "0.5rem", color: theme.colors.lightGray, fontSize: "0.9rem" }}>
+              Showing {filtered.length} tournament{filtered.length !== 1 ? 's' : ''} 
+              {filter !== "all" && ` (${filter})`}
+              {dateFilter !== "all" && ` on ${getAvailableDates().find(d => d.value === dateFilter)?.label || dateFilter}`}
+            </div>
+            
+            <div style={{ marginBottom: "1rem" }}>
+              <button
+                onClick={() => setFilter("all")}
+                style={{
+                  margin: "0 0.5rem",
+                  padding: "0.5rem 1rem",
+                  border: "none",
+                  borderRadius: "4px",
+                  color: "#fff",
+                  cursor: "pointer",
+                  boxShadow: "0 0 10px #ff00ff",
+                  background: filter === "all" ? theme.gradients.primaryButton : theme.gradients.secondaryButton,
+                }}
+              >
+                All ({tournaments.length - tournaments.filter(t => t.status === "completed").length})
+              </button>
+              <button
+                onClick={() => setFilter("upcoming")}
+                style={{
+                  margin: "0 0.5rem",
+                  padding: "0.5rem 1rem",
+                  border: "none",
+                  borderRadius: "4px",
+                  color: "#fff",
+                  cursor: "pointer",
+                  boxShadow: "0 0 10px #ff00ff",
+                  background: filter === "upcoming" ? theme.gradients.primaryButton : theme.gradients.secondaryButton,
+                }}
+              >
+                Upcoming ({tournaments.filter(t => t.status === "pending" || t.status === "running").length})
+              </button>
+              <button
+                onClick={() => setFilter("running")}
+                style={{
+                  margin: "0 0.5rem",
+                  padding: "0.5rem 1rem",
+                  border: "none",
+                  borderRadius: "4px",
+                  color: "#fff",
+                  cursor: "pointer",
+                  boxShadow: "0 0 10px #ff00ff",
+                  background: filter === "running" ? theme.gradients.primaryButton : theme.gradients.secondaryButton,
+                }}
+              >
+                Running ({tournaments.filter(t => t.status === "running").length})
+              </button>
+              <button
+                onClick={() => setFilter("completed")}
+                style={{
+                  margin: "0 0.5rem",
+                  padding: "0.5rem 1rem",
+                  border: "none",
+                  borderRadius: "4px",
+                  color: "#fff",
+                  cursor: "pointer",
+                  boxShadow: "0 0 10px #ff00ff",
+                  background: filter === "completed" ? theme.gradients.primaryButton : theme.gradients.secondaryButton,
+                }}
+              >
+                Completed ({tournaments.filter(t => t.status === "completed").length})
+              </button>
+            </div>
           </div>
-          <button
-            onClick={() => setFilter("all")}
-            style={{
-              margin: "0 0.5rem",
-              padding: "0.5rem 1rem",
-              border: "none",
-              borderRadius: "4px",
-              color: "#fff",
-              cursor: "pointer",
-              boxShadow: "0 0 10px #ff00ff",
-              background: filter === "all" ? theme.gradients.primaryButton : theme.gradients.secondaryButton,
-            }}
-          >
-            All ({tournaments.length - tournaments.filter(t => t.status === "completed").length})
-          </button>
-          <button
-            onClick={() => setFilter("upcoming")}
-            style={{
-              margin: "0 0.5rem",
-              padding: "0.5rem 1rem",
-              border: "none",
-              borderRadius: "4px",
-              color: "#fff",
-              cursor: "pointer",
-              boxShadow: "0 0 10px #ff00ff",
-              background: filter === "upcoming" ? theme.gradients.primaryButton : theme.gradients.secondaryButton,
-            }}
-          >
-            Upcoming ({tournaments.filter(t => t.status === "pending" || t.status === "running").length})
-          </button>
-          <button
-            onClick={() => setFilter("running")}
-            style={{
-              margin: "0 0.5rem",
-              padding: "0.5rem 1rem",
-              border: "none",
-              borderRadius: "4px",
-              color: "#fff",
-              cursor: "pointer",
-              boxShadow: "0 0 10px #ff00ff",
-              background: filter === "running" ? theme.gradients.primaryButton : theme.gradients.secondaryButton,
-            }}
-          >
-            Running ({tournaments.filter(t => t.status === "running").length})
-          </button>
-          <button
-            onClick={() => setFilter("completed")}
-            style={{
-              margin: "0 0.5rem",
-              padding: "0.5rem 1rem",
-              border: "none",
-              borderRadius: "4px",
-              color: "#fff",
-              cursor: "pointer",
-              boxShadow: "0 0 10px #ff00ff",
-              background: filter === "completed" ? theme.gradients.primaryButton : theme.gradients.secondaryButton,
-            }}
-          >
-            Completed ({tournaments.filter(t => t.status === "completed").length})
-          </button>
+
+          {/* ✅ DATE FILTER DROPDOWN */}
+          <div style={{ textAlign: "center" }}>
+            <label style={{ 
+              marginRight: "0.5rem", 
+              color: theme.colors.lightGray,
+              fontSize: "1rem",
+              fontWeight: "bold"
+            }}>
+               Filter by Date:
+            </label>
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              style={{
+                padding: "0.5rem 1rem",
+                borderRadius: "4px",
+                border: "1px solid #555",
+                background: "#1a1a1a",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: "1rem",
+                boxShadow: "0 0 10px rgba(255,0,255,0.3)",
+                outline: "none",
+                minWidth: "200px"
+              }}
+            >
+              <option value="all"> All Dates ({tournaments.length})</option>
+              {getAvailableDates().map(({ value, label }) => {
+                const count = tournaments.filter(t => t.date === value).length
+                return (
+                  <option key={value} value={value}>
+                    {label} ({count})
+                  </option>
+                )
+              })}
+            </select>
+            
+            {/* Clear date filter button */}
+            {dateFilter !== "all" && (
+              <button
+                onClick={() => setDateFilter("all")}
+                style={{
+                  marginLeft: "0.5rem",
+                  padding: "0.5rem 1rem",
+                  border: "none",
+                  borderRadius: "4px",
+                  color: "#fff",
+                  cursor: "pointer",
+                  background: theme.gradients.secondaryButton,
+                  fontSize: "0.9rem"
+                }}
+              >
+                ✕ Clear
+              </button>
+            )}
+          </div>
         </div>
 
         {filtered.length === 0 ? (
@@ -545,7 +697,10 @@ export default function Tournaments() {
             <h3>No tournaments found</h3>
             <p>No tournaments match the current filter criteria.</p>
             <button
-              onClick={() => setFilter("all")}
+              onClick={() => {
+                setFilter("all")
+                setDateFilter("all")
+              }}
               style={{
                 marginTop: "1rem",
                 padding: "0.75rem 1.5rem",
