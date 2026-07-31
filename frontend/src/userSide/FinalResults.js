@@ -71,7 +71,7 @@ const FinalResults = () => {
     return (
       <div className="final-results-error">
         <h2>Tournament Results Not Found</h2>
-        <p>The tournament results you&apos;re looking for could not be found.</p>
+        <p>The tournament results you're looking for could not be found.</p>
       </div>
     );
   }
@@ -108,16 +108,14 @@ const FinalResults = () => {
     return "place-third";
   };
 
-  const getMedal = (position) => {
-    if (position === 1) return "🥇";
-    if (position === 2) return "🥈";
-    return "🥉";
+  const isCurrentUser = (name) => {
+    return userData?.fullName === name || userData?.username === name;
   };
 
   const getRankLabel = (position) => {
-    if (position === 1) return "1st Place";
-    if (position === 2) return "2nd Place";
-    return "3rd Place";
+    if (position === 1) return "CHAMPION";
+    if (position === 2) return "RUNNER UP";
+    return "THIRD PLACE";
   };
 
   const prizePool =
@@ -125,8 +123,51 @@ const FinalResults = () => {
     (tournament.rewards?.second || 0) +
     (tournament.rewards?.third || 0);
 
+  const champion = winners.find(w => w.position === 1);
+  const secondPlace = winners.find(w => w.position === 2);
+  const thirdPlace = winners.find(w => w.position === 3);
+
+  const renderWinnerCard = (winner) => (
+    <div
+      key={winner.position}
+      className={`final-results-winner-card ${getPlaceClass(winner.position)} ${isCurrentUser(winner.name) ? "is-current-user" : ""}`}
+    >
+      {isCurrentUser(winner.name) && (
+        <div className="you-badge">⭐ YOU ⭐</div>
+      )}
+        1
+      <div className="winner-medal-icon">
+        {winner.position === 1 && <div className="trophy-icon">🏆</div>}
+        {winner.position === 2 && <div className="medal-silver">◆</div>}
+        {winner.position === 3 && <div className="medal-bronze">●</div>}
+      </div>
+      
+      <div className="winner-rank">{getRankLabel(winner.position)}</div>
+      <div className="winner-name">{winner.name}</div>
+      <div className="winner-team">Team: {winner.team}</div>
+      
+      {winner.prize > 0 && (
+        <div className="winner-prize">₹{winner.prize}</div>
+      )}
+    </div>
+  );
+
+  const StatCard = ({ icon, label, value }) => (
+    <div className="stat-card">
+      <div className="stat-icon">{icon}</div>
+      <div className="stat-value">{value}</div>
+      <div className="stat-label">{label}</div>
+    </div>
+  );
+
   return (
     <div className="final-results-page">
+      <div className="background-particles">
+        {[...Array(20)].map((_, i) => (
+          <div key={i} className="particle" style={{ animationDelay: `${i * 0.2}s` }} />
+        ))}
+      </div>
+
       <button type="button" onClick={handleBack} className="final-results-back-btn">
         ← Back
       </button>
@@ -134,39 +175,39 @@ const FinalResults = () => {
       <div className="final-results-container">
         <div className="final-results-card">
           <header className="final-results-header">
-            <h1 className="final-results-title">🏆 Tournament Results 🏆</h1>
+            <div className="header-spotlight" />
+            <h1 className="final-results-title">TOURNAMENT RESULTS</h1>
             <h2 className="final-results-tournament-name">
               {tournament.name || `Tournament ${tournament.t_id}`}
             </h2>
-            <p className="final-results-meta">
-              {tournament.game.toUpperCase()} • {tournament.map}
-            </p>
-            <p className="final-results-meta">
-              {new Date(tournament.t_date).toLocaleDateString()} • {tournament.t_time}
-            </p>
+            {/* <div className="tournament-meta-row">
+              <p className="final-results-meta">{tournament.game.toUpperCase()}</p>
+              <p className="final-results-meta">•</p>
+              <p className="final-results-meta">{tournament.map}</p>
+            </div>
+            <div className="tournament-meta-row">
+              <p className="final-results-meta">{new Date(tournament.t_date).toLocaleDateString()}</p>
+              <p className="final-results-meta">•</p>
+              <p className="final-results-meta">{tournament.t_time}</p>
+            </div>
+            <div className="prize-pool-display">
+              <span className="prize-label">PRIZE POOL</span>
+              <span className="prize-value">₹{prizePool}</span>
+            </div> */}
           </header>
 
           {winners.length > 0 ? (
             <section className="final-results-winners-section">
-              <h3 className="final-results-winners-title">Winners</h3>
-              <div className="final-results-podium">
-                {winners.map((winner) => {
-                  const isCurrentUser = userData?.fullName === winner.name;
-                  return (
-                    <div
-                      key={winner.position}
-                      className={`final-results-winner-card ${getPlaceClass(winner.position)} ${isCurrentUser ? "is-current-user" : ""}`}
-                    >
-                      <div className="final-results-winner-medal">{getMedal(winner.position)}</div>
-                      <div className="final-results-winner-rank">{getRankLabel(winner.position)}</div>
-                      <div className="final-results-winner-name">{winner.name}</div>
-                      <div className="final-results-winner-team">Team: {winner.team}</div>
-                      {winner.prize > 0 && (
-                        <div className="final-results-winner-prize">Prize: ₹{winner.prize}</div>
-                      )}
-                    </div>
-                  );
-                })}
+              {champion && (
+                <div className="champion-section">
+                  <div className="crown-icon">👑</div>
+                  {renderWinnerCard(champion)}
+                </div>
+              )}
+
+              <div className="podium-lower">
+                {secondPlace && renderWinnerCard(secondPlace)}
+                {thirdPlace && renderWinnerCard(thirdPlace)}
               </div>
             </section>
           ) : (
@@ -177,47 +218,28 @@ const FinalResults = () => {
           )}
 
           <section className="final-results-details">
-            <h4 className="final-results-details-title">Tournament Details</h4>
+            <h4 className="final-results-details-title">TOURNAMENT STATISTICS</h4>
             <div className="final-results-details-grid">
-              <div className="final-results-detail-item">
-                <strong>Game:</strong>
-                {tournament.game.toUpperCase()}
-              </div>
-              <div className="final-results-detail-item">
-                <strong>Map:</strong>
-                {tournament.map}
-              </div>
-              <div className="final-results-detail-item">
-                <strong>Mode:</strong>
-                {tournament.mode_type?.toUpperCase() || "SOLO"}
-              </div>
-              <div className="final-results-detail-item">
-                <strong>Entry Fee:</strong>
-                ₹{tournament.entry_fee}
-              </div>
-              <div className="final-results-detail-item">
-                <strong>Total Participants:</strong>
-                {tournament.participants?.length || 0}
-              </div>
-              <div className="final-results-detail-item">
-                <strong>Prize Pool:</strong>
-                ₹{prizePool}
-              </div>
+              <StatCard icon="🎮" label="Game" value={tournament.game.toUpperCase()} />
+              <StatCard icon="🗺️" label="Map" value={tournament.map} />
+              <StatCard icon="⚔️" label="Mode" value={tournament.mode_type?.toUpperCase() || "SOLO"} />
+              <StatCard icon="👥" label="Players" value={tournament.participants?.length || 0} />
+              <StatCard icon="💵" label="Entry Fee" value={`₹${tournament.entry_fee}`} />
+              <StatCard icon="🏆" label="Prize Pool" value={`₹${prizePool}`} />
             </div>
           </section>
 
           <div className="final-results-share-section">
             <button type="button" onClick={shareResults} className="final-results-share-btn">
-              📤 Share Results
+              SHARE RESULTS
             </button>
           </div>
 
           <footer className="final-results-footer">
-            <p>
-              Powered by <strong>PLAYZONE</strong> 🎯
-            </p>
-            <p className="final-results-footer-tagline">
-              &quot;Where every gamer becomes a legend.&quot;
+            <p className="footer-congrats">🎉 Congratulations to all participants!</p>
+            <p className="footer-thanks">Thank you for competing. See you in the next tournament!</p>
+            <p className="footer-powered">
+              Powered by <strong>PLAYZONE</strong>
             </p>
           </footer>
         </div>

@@ -93,7 +93,7 @@ const History = () => {
       case "3rd place":
         return "#CD7F32" // Bronze
       default:
-        return "#8B7355" // Brown for participant
+        return "var(--bg-tertiary)" // Proper theme color for participant
     }
   }
 
@@ -174,27 +174,27 @@ const History = () => {
                   </span>
                 </div>
 
-                <div className="history-card-body">
-                  <p>🎮 <strong>Game:</strong> {tournament.game}</p>
-                  <p>📅 <strong>Date:</strong> {new Date(tournament.date).toLocaleDateString()}</p>
-                  
-                  <div className="history-financials">
-                    <p className="history-entry">Entry: ₹{tournament.entryFee}</p>
-                    <p className="history-prize">Won: {tournament.prizeWon}</p>
-                  </div>
-                </div>
+                 <div className="history-card-body">
+                   <p><strong>Game:</strong> {tournament.game}</p>
+                   <p><strong>Date:</strong> {new Date(tournament.date).toLocaleDateString()}</p>
+                   
+                   <div className="history-financials">
+                     <p className="history-entry">Entry: ₹{tournament.entryFee}</p>
+                     <p className="history-prize">Won: {tournament.prizeWon}</p>
+                   </div>
+                 </div>
 
-                {/* View Results Button */}
-                {tournament.resultPublished && (
-                  <div className="history-card-footer">
-                    <button
-                      onClick={() => navigate(`/tournaments/results/${tournament.tournamentName}`)}
-                      className="btn-primary-gaming w-100"
-                    >
-                      🏆 View Match Results
-                    </button>
-                  </div>
-                )}
+                 {/* View Results Button */}
+                 {tournament.resultPublished && (
+                   <div className="history-card-footer">
+                     <button
+                       onClick={() => navigate(`/tournaments/results/${tournament.tournamentName}`)}
+                       className="btn-primary-gaming w-100"
+                     >
+                       View Match Results
+                     </button>
+                   </div>
+                 )}
               </div>
             ))
           ) : (

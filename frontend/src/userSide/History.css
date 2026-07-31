@@ -7,7 +7,7 @@
 
 .history-page-wrapper {
   min-height: 100vh;
-  padding: 40px 20px 80px;
+  padding: 4px 20px 80px;
   font-family: var(--font-primary, 'Poppins', sans-serif);
 }
 
@@ -35,9 +35,9 @@
   top: 90px;
   right: 5%;
   padding: 10px 20px;
-  background: rgba(18, 24, 38, 0.8);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  color: #fff;
+  color: var(--text-primary);
   border-radius: 8px;
   cursor: pointer;
   z-index: 100;
@@ -54,25 +54,25 @@
 
 /* Filters Section */
 .history-filters-container {
-  background: rgba(10, 14, 23, 0.7);
+  background: var(--bg-secondary);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 25px;
+  padding: 20px;
   margin-bottom: 40px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--card-shadow);
 }
 
 .history-filter-input {
   width: 100%;
   padding: 14px 16px;
   border-radius: 8px;
-  background: rgba(18, 24, 38, 0.9);
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  color: #fff;
+  color: var(--text-primary);
   font-size: 0.95rem;
   font-family: inherit;
   outline: none;
@@ -144,7 +144,7 @@
 
 .history-tourney-name {
   margin: 0;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1.2rem;
   font-weight: 700;
   line-height: 1.3;
@@ -171,13 +171,13 @@
 }
 
 .history-card-body strong {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .history-financials {
   display: flex;
   justify-content: space-between;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--bg-tertiary);
   padding: 15px;
   border-radius: 10px;
   margin-top: 20px;
@@ -215,7 +215,7 @@
   text-align: center;
   padding: 60px 20px;
   color: var(--text-secondary);
-  background: rgba(10, 14, 23, 0.5);
+  background: var(--bg-secondary);
   border-radius: 12px;
   border: 1px dashed var(--border-color);
   width: 100%;

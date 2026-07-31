@@ -31,6 +31,7 @@ export default function Tournaments() {
   const [teamName, setTeamName] = useState("")
   const [loading, setLoading] = useState(false)
   const [showConfirmPay, setShowConfirmPay] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
 
   const isDashboardView = location.pathname.startsWith("/dashboard")
 
@@ -345,15 +346,10 @@ export default function Tournaments() {
       <div className="tournaments-main-content">
         <h1 className="tournaments-page-title">Playzone Arena</h1>
 
-        {/* Filters Section */}
-        <div className="arena-filters-container">
-          <div className="status-filters">
-            <div className="filter-count-text">
-              Showing {filtered.length} tournament{filtered.length !== 1 ? 's' : ''} 
-              {filter !== "all" && ` (${filter})`}
-              {dateFilter !== "all" && ` on ${getAvailableDates().find(d => d.value === dateFilter)?.label || dateFilter}`}
-            </div>
-            
+        {/* Main Status Filters (always visible) */}
+        <div className="filter-main-bar">
+                    
+          <div className="filter-row">
             <div className="filter-btn-group">
               <button onClick={() => setFilter("all")} className={`filter-btn ${filter === "all" ? "active" : ""}`}>
                 All ({tournaments.length - tournaments.filter(t => t.status === "completed").length})
@@ -367,26 +363,40 @@ export default function Tournaments() {
               <button onClick={() => setFilter("completed")} className={`filter-btn ${filter === "completed" ? "active" : ""}`}>
                 Completed ({tournaments.filter(t => t.status === "completed").length})
               </button>
+              <button onClick={() => setShowFilters(!showFilters)} className="more-filters-btn">
+                {showFilters ? "✕ Less" : "📅 More Filters"} &nbsp;
+              </button>
+            
+            </div>
+            {/* Date Filter (collapsible) */}
+            {showFilters && (
+              <div className="date-filter-expanded" style={{ margin: "1% auto", textAlign:"center"}}>
+                <label>Filter by Date:</label>
+                <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="date-select">
+                  <option value="all">All Dates ({tournaments.length})</option>
+                  {getAvailableDates().map(({ value, label }) => {
+                    const count = tournaments.filter(t => t.date === value).length
+                    return <option key={value} value={value}>{label} ({count})</option>
+                  })}
+                </select>
+                
+                {dateFilter !== "all" && (
+                  <button onClick={() => setDateFilter("all")} className="clear-date-btn">
+                    ✕ Clear
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div className="filter-count-text">
+              Showing {filtered.length} tournament{filtered.length !== 1 ? 's' : ''} 
+              {filter !== "all" && ` (${filter})`}
+              {dateFilter !== "all" && ` on ${getAvailableDates().find(d => d.value === dateFilter)?.label || dateFilter}`}
             </div>
           </div>
-
-          <div className="date-filter">
-            <label>Filter by Date:</label>
-            <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="date-select">
-              <option value="all">All Dates ({tournaments.length})</option>
-              {getAvailableDates().map(({ value, label }) => {
-                const count = tournaments.filter(t => t.date === value).length
-                return <option key={value} value={value}>{label} ({count})</option>
-              })}
-            </select>
-            
-            {dateFilter !== "all" && (
-              <button onClick={() => setDateFilter("all")} className="clear-date-btn">
-                ✕ Clear
-              </button>
-            )}
-          </div>
         </div>
+
+
 
         {/* Tournament Rendering */}
         {filtered.length === 0 ? (
