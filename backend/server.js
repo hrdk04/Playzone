@@ -317,8 +317,6 @@ const Payment = mongoose.model("payment", paymentSchema)
 // ==========================
 mongoose
   .connect(
-    // 'mongodb+srv://yk2552005_db_user:aPaJ7RBrI1imHXH1@cluster0.awcnqsc.mongodb.net/PlayzoneDB?appName=Cluster0',
-    "mongodb+srv://inquisitivewoodpeckermhwz_db_user:Ihatejava123@cluster0.7pmkm4a.mongodb.net/Tournament_DB?retryWrites=true&w=majority&appName=Cluster0",
   )
   .then(async () => {
     console.log("MongoDB connected successfully")
