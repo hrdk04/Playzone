@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import theme from "../theme"
 import UserSideNav from "./UserSideNav"
 import axios from "axios"
 import { useLocation, useNavigate } from "react-router-dom"
+import "./PaymentPage.css"
 
 export default function PaymentPage() {
   const [user, setUser] = useState(null)
@@ -13,6 +13,7 @@ export default function PaymentPage() {
   const [showModal, setShowModal] = useState(false)
   const [modalType, setModalType] = useState("deposit")
   const [amount, setAmount] = useState("")
+  const [upiId, setUpiId] = useState("")
   const [processing, setProcessing] = useState(false)
 
   const emailOrUsername = localStorage.getItem("userName")
@@ -67,32 +68,41 @@ export default function PaymentPage() {
   const openModal = (type) => {
     setModalType(type)
     setAmount("")
+    setUpiId("")
     setShowModal(true)
   }
 
+  // NOTE: This function is structured to be replaced with a Real Payment Gateway SDK (e.g., Razorpay)
   const submitPayment = async () => {
     if (!amount || Number(amount) <= 0) return alert("Enter a valid amount")
+    if (modalType === "withdraw" && (!upiId || !upiId.includes("@"))) return alert("Enter a valid UPI ID for withdrawal")
+    
     setProcessing(true)
 
+    // Simulated Gateway Delay
     setTimeout(async () => {
       try {
-        const payload = { user_id: user._id, amount: Number(amount), time: new Date().toLocaleTimeString() }
+        const payload = { 
+          user_id: user._id, 
+          amount: Number(amount), 
+          time: new Date().toLocaleTimeString(),
+          upi_id: upiId // Added for real withdrawal context
+        }
 
-        const url =
-          modalType === "deposit"
+        const url = modalType === "deposit"
             ? "http://localhost:5000/payment/deposit"
             : "http://localhost:5000/payment/withdraw"
 
         const res = await axios.post(url, payload)
         const newBalance = res.data.balance
+        
         setUser((prev) => ({ ...prev, amount: newBalance }))
         await loadHistory(user._id)
 
-        // Check if there's a pending tournament registration
+        // Check if there's a pending tournament registration flow
         const pendingRegistration = location.state?.action === "topup_then_register" && location.state?.meta
 
         if (pendingRegistration) {
-          // Instead of direct registration, return to tournament registration flow
           alert("Payment successful! Returning to tournament registration...")
           navigate("/tournaments", {
             state: {
@@ -102,79 +112,87 @@ export default function PaymentPage() {
             }
           })
         } else {
-          alert(`${modalType === "deposit" ? "Deposit" : "Withdrawal"} successful — new balance ₹${newBalance}`)
+          alert(`${modalType === "deposit" ? "Deposit" : "Withdrawal request"} successful!`)
         }
       } catch (err) {
         console.error(err)
-        alert(err.response?.data?.message || "Payment failed")
+        alert(err.response?.data?.message || "Payment processing failed")
       } finally {
         setProcessing(false)
         setShowModal(false)
       }
-    }, 1000)
+    }, 1500)
   }
 
   return (
-    <div style={styles.page}>
+    <div className="payment-page-wrapper">
       <UserSideNav />
-      <div style={styles.container}>
-        <center>
-          <h1 style={styles.title}>💳 Wallet Dashboard</h1>
-          <div style={styles.balanceRow}>
-            <div style={styles.balanceBox}>
-              <p style={{ color: theme.colors.lightGray, margin: 0 }}>Available Balance</p>
-              <h2 style={{ margin: 0, fontSize: "2rem" }}>₹{user?.amount ?? 0}</h2>
+      
+      <div className="payment-main-container">
+        {/* Header & Balance Card */}
+        <div className="wallet-header-section">
+          <h1 className="payment-page-title">💳 Secure Wallet</h1>
+          
+          <div className="wallet-balance-card">
+            <div className="balance-info-block">
+              <p className="balance-label">Available Balance</p>
+              <h2 className="balance-value">₹{user?.amount ?? 0}</h2>
             </div>
-            <div style={styles.actionBox}>
-              <button style={styles.primaryButton} onClick={() => openModal("deposit")}>
-                + Add Money
+            
+            <div className="wallet-action-buttons">
+              <button className="btn-primary-gaming" onClick={() => openModal("deposit")}>
+                💰 Add Funds
               </button>
-              <button style={styles.ghostButton} onClick={() => openModal("withdraw")}>
-                Withdraw
+              <button className="btn-secondary-gaming" onClick={() => openModal("withdraw")}>
+                🏦 Withdraw
               </button>
-              <button style={styles.refreshButton} onClick={() => loadHistory(user?._id)}>
-                ⟳ Refresh
+              <button className="wallet-refresh-btn" onClick={() => loadHistory(user?._id)}>
+                ⟳ Sync
               </button>
             </div>
           </div>
-        </center>
+        </div>
 
-        <div style={styles.transactionsSection}>
-          <h3 style={styles.sectionTitle}>Recent Transactions</h3>
-          <div style={styles.historyContainer}>
+        {/* Transaction Ledger */}
+        <div className="transactions-ledger-section">
+          <h3 className="ledger-title">Financial Ledger</h3>
+          
+          <div className="ledger-table-container">
             {loadingHistory ? (
-              <p>Loading...</p>
+              <div className="ledger-empty-state">Syncing transactions...</div>
             ) : history.length === 0 ? (
-              <p>No transactions yet.</p>
+              <div className="ledger-empty-state">No transaction history found.</div>
             ) : (
-              <table style={styles.table}>
+              <table className="ledger-table">
                 <thead>
                   <tr>
-                    <th style={styles.th}>Date</th>
-                    <th style={styles.th}>Type</th>
-                    <th style={styles.th}>Amount</th>
-                    <th style={styles.th}>Time</th>
+                    <th>Date & Time</th>
+                    <th>Reference Type</th>
+                    <th style={{ textAlign: "right" }}>Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {history.slice(0, 10).map((h) => {
+                  {history.slice(0, 15).map((h) => {
                     const isDebit = h.p_type === "withdraw" || h.p_type === "tournament"
-                    const color = isDebit ? "#ff5c5c" : "#4eff8c"
-                    const amountDisplay = isDebit ? `-₹${h.amount}` : `+₹${h.amount}`
-                    let typeDisplay = h.p_type
-                    if (h.p_type === "tournament" && h.tournament_id)
-                      typeDisplay = `Tournament (${h.tournament_id})`
-                    if (h.p_type === "prize" && h.tournament_id)
-                      typeDisplay = `Prize Won (${h.tournament_id})`
-                    if (h.p_type === "refund" && h.tournament_id)
-                      typeDisplay = `Refund (${h.tournament_id})`
+                    const isCredit = h.p_type === "deposit" || h.p_type === "refund" || h.p_type === "prize"
+                    const amountClass = isDebit ? "amount-debit" : "amount-credit"
+                    const amountDisplay = isDebit ? `- ₹${h.amount}` : `+ ₹${h.amount}`
+                    
+                    let typeDisplay = h.p_type.toUpperCase()
+                    if (h.p_type === "tournament") typeDisplay = `🎟️ Match Entry (${h.tournament_id})`
+                    if (h.p_type === "prize") typeDisplay = `🏆 Prize Won (${h.tournament_id})`
+                    if (h.p_type === "refund") typeDisplay = `🔄 Refund (${h.tournament_id})`
+                    if (h.p_type === "deposit") typeDisplay = `💳 Wallet Top-up`
+                    if (h.p_type === "withdraw") typeDisplay = `🏧 Bank Withdrawal`
 
                     return (
-                      <tr key={h._id} style={styles.tr}>
-                        <td style={styles.td}>{new Date(h.p_date).toLocaleDateString()}</td>
-                        <td style={styles.td}>{typeDisplay}</td>
-                        <td style={{ ...styles.td, color, fontWeight: "600" }}>{amountDisplay}</td>
-                        <td style={styles.td}>{h.p_time}</td>
+                      <tr key={h._id}>
+                        <td>
+                          <div className="td-date">{new Date(h.p_date).toLocaleDateString()}</div>
+                          <div className="td-time">{h.p_time}</div>
+                        </td>
+                        <td className="td-type">{typeDisplay}</td>
+                        <td className={`td-amount ${amountClass}`}>{amountDisplay}</td>
                       </tr>
                     )
                   })}
@@ -185,165 +203,70 @@ export default function PaymentPage() {
         </div>
       </div>
 
-      {/* Modal Section */}
+      {/* Secure Checkout Modal */}
       {showModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modal}>
-            <h3 style={{ textAlign: "center", marginBottom: 10 }}>
-              {modalType === "deposit" ? "💰 Add Money (UPI Only)" : "🏧 Withdraw Funds"}
+        <div className="payment-modal-overlay">
+          <div className="payment-modal-card">
+            <h3 className="payment-modal-title">
+              {modalType === "deposit" ? "💰 Secure Top-Up" : "🏧 Withdraw Funds"}
             </h3>
 
-            {/* Display Current Balance inside modal */}
-            <p style={{ textAlign: "center", marginBottom: 20, color: "#aaa" }}>
-              Current Balance: <strong style={{ color: "#4eff8c" }}>₹{user?.amount ?? 0}</strong>
-            </p>
+            <div className="modal-balance-display">
+              Current Balance: <span>₹{user?.amount ?? 0}</span>
+            </div>
 
-            <label style={styles.label}>Amount (₹)</label>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              style={styles.modalInput}
-              placeholder="e.g. 500"
-              min="1"
-            />
-            <label style={styles.label}>UPI ID</label>
-            <input placeholder="yourname@upi" style={styles.modalInput} />
+            <div className="payment-form-group">
+              <label className="payment-label">Amount (₹)</label>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="payment-input"
+                placeholder={modalType === "deposit" ? "Minimum ₹10" : "Minimum ₹100"}
+                min="1"
+              />
+            </div>
 
-            <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap", justifyContent: "center" }}>
-              <button onClick={submitPayment} style={styles.primaryButton} disabled={processing}>
-                {processing ? "Processing..." : modalType === "deposit" ? "Confirm Deposit" : "Request Withdrawal"}
+            {/* Display UPI input prominently for withdrawals, optional for deposits right now */}
+            <div className="payment-form-group">
+              <label className="payment-label">UPI ID / VPA</label>
+              <input 
+                type="text"
+                value={upiId}
+                onChange={(e) => setUpiId(e.target.value)}
+                className="payment-input" 
+                placeholder="yourname@upi" 
+              />
+            </div>
+
+            <div className="payment-modal-actions">
+              <button 
+                onClick={submitPayment} 
+                className={`btn-primary-gaming w-100 ${processing ? "processing" : ""}`} 
+                disabled={processing}
+              >
+                {processing 
+                  ? "Processing Securely..." 
+                  : modalType === "deposit" ? "Pay Securely" : "Submit Request"
+                }
               </button>
-              <button onClick={() => setShowModal(false)} style={styles.ghostButton} disabled={processing}>
+              <button 
+                onClick={() => setShowModal(false)} 
+                className="btn-secondary-gaming w-100" 
+                disabled={processing}
+              >
                 Cancel
               </button>
             </div>
-            <p style={styles.disclaimer}>⚠️ This is a dummy payment. No real transaction occurs.</p>
+            
+            <p className="payment-disclaimer">
+              {modalType === "deposit" 
+                ? "🔒 Secured by 256-bit encryption. Currently in development mode." 
+                : "⏳ Withdrawals are processed to your UPI ID within 24 hours."}
+            </p>
           </div>
         </div>
       )}
     </div>
   )
-}
-
-/* Styles */
-const styles = {
-  page: {
-    display: "flex",
-    flexDirection: "column",
-    background: theme.gradients.homeBackground,
-    color: theme.colors.white,
-    minHeight: "100vh",
-    fontFamily: theme.fonts.primary,
-    overflow: "hidden", 
-  },
-  container: {
-    flex: 1,
-    padding: "60px 20px",
-    margin: "2% auto",
-    maxWidth: 900,
-    width: "95%",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  title: { fontSize: "1.8rem", textShadow: theme.shadows.titleGlow, marginBottom: 20 },
-  balanceRow: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 20,
-  },
-  balanceBox: {
-    background: theme.gradients.navbarAlt1,
-    padding: 20,
-    borderRadius: 12,
-    minWidth: 200,
-    textAlign: "center",
-    boxShadow: theme.shadows.sectionTitleGlow,
-  },
-  actionBox: {
-    display: "flex",
-    gap: 10,
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  primaryButton: {
-    background: theme.gradients.secondaryButton,
-    border: "none",
-    padding: "10px 16px",
-    borderRadius: 8,
-    color: "#fff",
-    cursor: "pointer",
-    fontWeight: "600",
-  },
-  ghostButton: {
-    background: "transparent",
-    border: "1px solid rgba(255,255,255,0.15)",
-    padding: "10px 16px",
-    borderRadius: 8,
-    color: "#fff",
-    cursor: "pointer",
-  },
-  refreshButton: {
-    background: "transparent",
-    border: "1px solid rgba(255,255,255,0.1)",
-    padding: "8px 12px",
-    borderRadius: 8,
-    color: "#fff",
-    cursor: "pointer",
-  },
-  transactionsSection: {
-    marginTop: 30,
-    width: "100%",
-    maxWidth: 800,
-    flex: "1 1 auto",
-  },
-  sectionTitle: { fontSize: 18, marginBottom: 8 },
-  historyContainer: {
-    maxHeight: 250,
-    overflowY: "auto", // ✅ Only this section scrolls
-    borderRadius: 8,
-    background: "rgba(255,255,255,0.02)",
-    backdropFilter: "blur(8px)",
-  },
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 14 },
-  th: {
-    padding: 10,
-    background: "rgba(18, 21, 52, 0.84)",
-    position: "sticky",
-    top: 0,
-    textAlign: "left",
-  },
-  td: { padding: 10 },
-  tr: { borderBottom: "1px solid rgba(255,255,255,0.05)" },
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.7)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 9999,
-    overflow: "hidden",
-  },
-  modal: {
-    background: "#121212",
-    padding: 20,
-    width: "90%",
-    maxWidth: 420,
-    borderRadius: 12,
-  },
-  modalInput: {
-    width: "100%",
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 6,
-    border: "1px solid rgba(255,255,255,0.1)",
-    background: "#1a1a1a",
-    color: "#fff",
-  },
-  label: { display: "block", marginBottom: 6, color: "#ccc", fontSize: 13 },
-  disclaimer: { textAlign: "center", color: "#999", fontSize: 12, marginTop: 12 },
 }

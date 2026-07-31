@@ -1,0 +1,78 @@
+/* ==========================================================================
+   TYPE: PAGE-SPECIFIC (WRAPPER)
+   FILE: src/components/GlobalLayout.css
+   APPLIED TO: src/components/GlobalLayout.js
+   PURPOSE: Layout structural constraints and theme toggle button styling
+   ========================================================================== */
+
+.layout-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.main-content {
+  flex: 1;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 100px 20px 60px;
+}
+
+/* Auth pages: compact, centered, fits viewport */
+.main-content:has(.auth-wrapper) {
+  padding: 88px 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 60px);
+}
+
+/* User dashboard: tighter top padding (UserSideNav is fixed) */
+.main-content:has(.dashboard-page) {
+  padding-top: 0;
+  max-width: 100%;
+}
+
+/* Premium Floating Theme Toggle */
+.theme-toggle-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 90px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--card-shadow);
+  z-index: 1250;
+  transition: var(--hover-transition);
+  backdrop-filter: blur(10px);
+}
+
+/* Hide global theme button on user dashboard pages where navbar has theme toggle */
+@media (max-width: 768px) {
+  .user-side-nav-wrapper ~ .theme-toggle-btn,
+  .dashboard-page + .theme-toggle-btn,
+  body:has(.user-side-nav-wrapper) .theme-toggle-btn {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
+.theme-toggle-btn:hover {
+  transform: translateY(-5px) scale(1.1);
+  border-color: var(--accent-pink);
+  box-shadow: var(--glow-pink);
+}
+
+.theme-toggle-btn:active {
+  transform: translateY(-2px) scale(1.05);
+}

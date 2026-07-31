@@ -1,0 +1,106 @@
+/* ==========================================================================
+   TYPE: SHARED
+   FILE: src/components/UiIcons.css
+   PURPOSE: Professional icon badges replacing emoji across the platform
+   ========================================================================== */
+
+.ui-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(0, 245, 212, 0.08);
+  border: 1px solid rgba(0, 245, 212, 0.25);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 800;
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+  color: var(--accent-cyan);
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.ui-icon.pink {
+  background: rgba(255, 77, 138, 0.08);
+  border-color: rgba(255, 77, 138, 0.25);
+  color: var(--accent-pink);
+}
+
+.ui-icon.purple {
+  background: rgba(167, 139, 250, 0.08);
+  border-color: rgba(167, 139, 250, 0.25);
+  color: var(--accent-purple);
+}
+
+.ui-icon.orange {
+  background: rgba(251, 146, 60, 0.08);
+  border-color: rgba(251, 146, 60, 0.25);
+  color: var(--accent-orange);
+}
+
+.ui-icon.sm {
+  width: 28px;
+  height: 28px;
+  font-size: 0.6rem;
+  border-radius: 6px;
+}
+
+.ui-icon.lg {
+  width: 48px;
+  height: 48px;
+  font-size: 0.8rem;
+  border-radius: 10px;
+}
+
+.metric-icon-letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(0, 245, 212, 0.08);
+  border: 1px solid rgba(0, 245, 212, 0.2);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 800;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  color: var(--accent-cyan);
+  flex-shrink: 0;
+}
+
+.metric-icon-letter.pink {
+  background: rgba(255, 77, 138, 0.08);
+  border-color: rgba(255, 77, 138, 0.2);
+  color: var(--accent-pink);
+}
+
+.metric-icon-letter.green {
+  background: rgba(40, 167, 69, 0.08);
+  border-color: rgba(40, 167, 69, 0.25);
+  color: #28a745;
+}
+
+.theme-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  position: relative;
+}
+
+.theme-icon.sun::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.theme-icon.moon {
+  border-color: transparent;
+  background: currentColor;
+  box-shadow: -6px 0 0 var(--bg-secondary);
+}

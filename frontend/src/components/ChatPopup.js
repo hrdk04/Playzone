@@ -201,7 +201,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-    zIndex: 1000,
+    zIndex: 1300,
     transition: 'all 0.3s ease',
     fontSize: '24px',
   },
@@ -232,7 +232,7 @@ const styles = {
     background: theme.gradients.navbarAlt1,
     borderRadius: '12px',
     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-    zIndex: 999,
+    zIndex: 1299,
     border: '1px solid rgba(255, 255, 255, 0.1)',
   },
   panelHeader: {

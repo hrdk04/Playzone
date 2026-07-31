@@ -5,8 +5,8 @@ import { useNavigate, useLocation } from "react-router-dom"
 import axios from "axios"
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
-import theme from "../theme"
 import UserSideNav from "./UserSideNav"
+import "./Tournaments.css" // ✅ INJECTING THE NEW CSS
 
 const gameThumbs = {
   bgmi: "https://yourcdn.com/bgmi.jpg",
@@ -20,14 +20,13 @@ export default function Tournaments() {
   const location = useLocation()
 
   const [filter, setFilter] = useState("all")
-  const [dateFilter, setDateFilter] = useState("all") // ✅ NEW: Date filter state
+  const [dateFilter, setDateFilter] = useState("all") 
   const [viewAll, setViewAll] = useState({ high: false, mid: false, low: false })
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [selectedTournament, setSelectedTournament] = useState(null)
   const [tournaments, setTournaments] = useState([])
 
-  // NEW STATES
   const [showTeamForm, setShowTeamForm] = useState(false)
   const [teamName, setTeamName] = useState("")
   const [loading, setLoading] = useState(false)
@@ -45,15 +44,14 @@ export default function Tournaments() {
       setSelectedTournament(location.state.tournament)
       if (location.state.teamName) {
         setTeamName(location.state.teamName)
-        // Automatically trigger registration after returning from payment
         setShowConfirmPay(true)
         setTimeout(() => {
           handlePayAndRegister()
         }, 500)
       }
-      // Clear the state after processing
       navigate(location.pathname + location.search, { replace: true, state: {} })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, navigate])
 
   useEffect(() => {
@@ -83,14 +81,11 @@ export default function Tournaments() {
       })
   }, [])
 
-  // ✅ NEW: Get available dates dynamically
   const getAvailableDates = () => {
     const today = new Date().toISOString().slice(0, 10)
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
     
-    // Get unique dates from tournaments
     const uniqueDates = [...new Set(tournaments.map(t => t.date).filter(Boolean))]
-    
     const dateOptions = []
     
     uniqueDates.forEach(date => {
@@ -101,16 +96,12 @@ export default function Tournaments() {
       } else {
         const d = new Date(date)
         const label = d.toLocaleDateString('en-IN', { 
-          day: '2-digit', 
-          month: 'short', 
-          year: 'numeric',
-          weekday: 'short'
+          day: '2-digit', month: 'short', year: 'numeric', weekday: 'short'
         })
         dateOptions.push({ value: date, label: `${label}`, sortOrder: 2 })
       }
     })
     
-    // Sort: Today first, Yesterday second, then others by date descending
     return dateOptions.sort((a, b) => {
       if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder
       return new Date(b.value) - new Date(a.value)
@@ -118,13 +109,10 @@ export default function Tournaments() {
   }
 
   const handleTournamentClick = (tournament) => {
-    // Handle completed tournaments differently
     if (tournament.status === "completed") {
       if (tournament.result_published) {
-        // Navigate to results page for completed tournaments with published results
         navigate(`/tournaments/results/${tournament.id}`)
       } else {
-        // Show message for completed tournaments without results
         toast.info("Tournament completed but results are not yet published. Please check back later.", {
           autoClose: 4000
         })
@@ -205,7 +193,6 @@ export default function Tournaments() {
         autoClose: 3000
       })
 
-      // Refresh user balance from backend and persist so Dashboard reflects deduction
       try {
         const refreshed = await axios.get(`http://localhost:5000/user/id/${user._id}`)
         localStorage.setItem("user", JSON.stringify(refreshed.data))
@@ -228,9 +215,7 @@ export default function Tournaments() {
 
   const handleBack = () => navigate(-1)
 
-  // ✅ UPDATED: Filter logic with date filter
   const filtered = tournaments.filter((t) => {
-    // Status filter
     let statusMatch = true
     if (filter === "all") {
       statusMatch = t.status === "pending" || t.status === "running"
@@ -246,7 +231,6 @@ export default function Tournaments() {
       statusMatch = t.status === filter
     }
     
-    // Date filter
     let dateMatch = true
     if (dateFilter !== "all") {
       dateMatch = t.date === dateFilter
@@ -264,168 +248,57 @@ export default function Tournaments() {
     const visible = viewAll[category] ? list : list.slice(0, limit)
 
     return (
-      <div style={{ marginBottom: "2rem" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            paddingRight: "2rem",
-          }}
-        >
-          <h2
-            style={{
-              fontSize: theme.sizes.sectionTitleFontSize,
-              color: theme.colors.secondary,
-              textShadow: theme.shadows.sectionTitleGlow,
-              marginBottom: "1rem",
-            }}
-          >
-            {category === "high" && "Pool Prize > ₹1000"}
-            {category === "mid" && "₹500 - ₹1000 Tournaments"}
-            {category === "low" && "< ₹500 Tournaments"}
+      <div className="arena-tier-section">
+        <div className="arena-tier-header">
+          <h2 className="arena-tier-title">
+            {category === "high" && "Elite Tier (Pool > ₹1000)"}
+            {category === "mid" && "Challenger Tier (₹500 - ₹1000)"}
+            {category === "low" && "Starter Tier (< ₹500)"}
           </h2>
 
           {list.length > limit && (
             <button
               onClick={() => setViewAll({ ...viewAll, [category]: !viewAll[category] })}
-              style={{
-                marginTop: "1rem",
-                padding: theme.spacing.buttonPadding,
-                background: theme.gradients.secondaryButton,
-                color: theme.colors.white,
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                boxShadow: theme.shadows.buttonShadow,
-              }}
+              className="btn-secondary-gaming"
             >
               {viewAll[category] ? "Show Less" : "View All"}
             </button>
           )}
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: viewAll[category]
-              ? "repeat(auto-fit, minmax(320px, 1fr))"
-              : "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: "1rem",
-          }}
-        >
+        <div className={`grid-container ${viewAll[category] ? 'expanded' : ''}`}>
           {visible.map((t) => (
-            <div
-              key={t.id}
-              style={{
-                backgroundImage: `url(${t.thumbnail})`,
-                backgroundPosition: "center",
-                backgroundSize: "cover",
-                padding:t.status === 'completed'? "0" :"1rem",
-                borderRadius: "8px",
-                minHeight: "220px",
-                position: "relative",
-                overflow: "hidden",
-                cursor: "pointer",
-                transition: "transform 0.3s ease",
-                opacity: t.status === "completed" ? 1 : 1,
-                filter: t.status === "completed" ? "none" : "none",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateX(5px)"
-              }}
-              onMouseLeave={(e) => (e.currentTarget.style.transform = "translateX(0)")}
-              onClick={() => handleTournamentClick(t)}
-            >
-              <div
-                style={{
-                  backgroundColor: "rgba(0,0,0,0.6)",
-                  padding: "0.5rem",
-                  borderRadius: "8px",
-                  color: theme.colors.white,
-                  height: "95%",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  position: "relative",
-                }}
-              >
-                <div style={ {textAlign: t.status==='completed' ? 'none': 'center', } }>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems:  "center", marginBottom: "0.5rem" }}>
-                    <h3
-                      style={{
-                        color: theme.colors.primary,
-                        margin: 0,
-                        fontSize: "1.1rem"
-                      }}
-                    >
-                      {t.id}
-                    </h3>
-                    <span style={{
-                      padding: "0.2rem 0.5rem",
-                      borderRadius: "12px",
-                      fontSize: "0.7rem",
-                      fontWeight: "bold",
-                      background: t.status === "completed" ? "#28a745" : 
-                                 t.status === "running" ? "#ffc107" : 
-                                 t.status === "pending" ? "#17a2b8" : "#6c757d",
-                      color: "#fff"
-                    }}>
-                      {t.status==="pending" ?  "upcoming".toUpperCase():"".toUpperCase()
-                       || t.status === 'running'? "running".toUpperCase(): ""
-                       || t.status === 'completed'? "completed".toUpperCase(): ""}
-                    </span>
-                  </div>
-                  <p style={{ margin: "0.2rem 0", fontSize: "1.5rem", color: theme.colors.secondary, textAlign:'center' }}>🏆 Prizepool:  ₹{t.poolPrize}</p>
-                  
-                  
-                  <p style={{ margin: "0.2rem 0", fontSize: "1rem",paddingTop:'6px' }}>🎮 {t.game}</p>
-                  <p style={{ margin: "0.2rem 0", fontSize: "1rem",paddingTop:'6px' }}>🗺️ Map: {t.map}</p>
-                  <p style={{ margin: "0.2rem 0", fontSize: "1rem", paddingTop: "6px" }}>
-                        📅 {t.date}{" "}
-                        {parseInt(t.time) >= 12
-                          ? `${t.time} PM`
-                          : `${t.time} AM`}
-                      </p>
-                  <p style={{ margin: "0.2rem 0", fontSize: "1rem",paddingTop:'6px', color:'#65dda5ff' }}>💰 Entry: ₹{t.entryFee}</p>
-                  
-                  
-                  {/* Results Available Indicator */}
-                  {t.status === "completed" && t.result_published && (
-                    <div style={{
-                      margin: "0.5rem 0",
-                      padding: "0.3rem 0.6rem",
-                      background: "rgba(0, 255, 200, 0.2)",
-                      border: "1px solid #00ffcc",
-                      borderRadius: "4px",
-                      fontSize: "0.8rem",
-                      color: "#00ffcc",
-                      textAlign: "center",
-                      fontWeight: "bold"
-                    }}>
-                      🏆 Results Published
-                    </div>
-                  )}
+            <div key={t.id} className="tournament-card" onClick={() => handleTournamentClick(t)}>
+              
+              <div className="tournament-img-wrapper">
+                <img src={t.thumbnail} alt={t.game} className="tournament-img" />
+                <div className={`status-badge ${t.status}`}>
+                  {t.status.toUpperCase()}
                 </div>
+              </div>
+
+              <div className="tournament-info">
+                <h3>{t.id}</h3>
+                <p>🎮 {t.game}</p>
+                <p>🗺️ Map: {t.map}</p>
+                <p>📅 {t.date} • {parseInt(t.time) >= 12 ? `${t.time} PM` : `${t.time} AM`}</p>
                 
-                {/* Completed overlay */}
-                {t.status === "completed" && (
-                  <div style={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    background: "rgba(0, 0, 0, 0.9)",
-                    color: "#fff",
-                    padding: "1rem",
-                    borderRadius: "8px",
-                    textAlign: "center",
-                    fontWeight: "bold",
-                    fontSize: "1.2rem",
-                    border: "2px solid #28a745",
-                    cursor: "pointer",
-                    transition: "all 0.3s ease"
-                  }}
+                <div className="tournament-prizes">
+                  <span className="prize-entry">Entry: ₹{t.entryFee}</span>
+                  <span className="prize-pool">Pool: ₹{t.poolPrize}</span>
+                </div>
+
+                {t.status === "completed" && t.result_published && (
+                  <div className="results-published-tag">
+                    🏆 Results Published
+                  </div>
+                )}
+              </div>
+              
+              {/* Completed Overlay */}
+              {t.status === "completed" && (
+                <div 
+                  className="completed-overlay"
                   onClick={(e) => {
                     e.stopPropagation()
                     if (t.result_published) {
@@ -434,42 +307,21 @@ export default function Tournaments() {
                       toast.info("Tournament completed but results are not yet published. Please check back later.")
                     }
                   }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = "rgba(40, 167, 69, 0.9)"
-                    e.target.style.transform = "translate(-50%, -50%) scale(1.05)"
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = "rgba(0, 0, 0, 0.9)"
-                    e.target.style.transform = "translate(-50%, -50%) scale(1)"
-                  }}
-                  >
-                    {t.result_published ? "🏆 View Results" : "⏳ Results Pending"}
-                  </div>
-                )}
-                
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: "0",
-                    left: "0",
-                    height: "100%",
-                    width: "100%",
-                    backgroundColor: "rgba(0, 0, 0, 1)",
-                    borderRadius: "8px",
-                    opacity: 0,
-                    transition: "opacity 0.4s ease",
-                    textAlign:'center'
-                  }}
-                  onMouseEnter={(e) => (t.status==="completed" ? "none" : e.currentTarget.style.opacity = 1)}
-                  onMouseLeave={(e) => (e.currentTarget.style.opacity = 0)}
                 >
-                  <center><p style={{ margin: "0.2rem 0", fontSize: "2rem", color: theme.colors.secondary }}>🏆 Pool: ₹{t.poolPrize}</p>
-                  </center> 
-                  <p style={{fontSize:'1.5rem'}}>🏆 1st: {t.reward_1}</p>
-                  <p style={{fontSize:'1.3rem'}}>🥈 2nd: {t.reward_2}</p>
-                  <p style={{fontSize:'1.2rem'}}>🥉 3rd: {t.reward_3}</p>
+                  {t.result_published ? "🏆 View Results" : "⏳ Results Pending"}
                 </div>
-              </div>
+              )}
+              
+              {/* Hover Prize Reveal (Hidden if completed) */}
+              {t.status !== "completed" && (
+                <div className="prize-hover-reveal">
+                  <p className="hover-pool">🏆 Pool: ₹{t.poolPrize}</p>
+                  <p>🥇 1st: {t.reward_1}</p>
+                  <p>🥈 2nd: {t.reward_2}</p>
+                  <p>🥉 3rd: {t.reward_3}</p>
+                </div>
+              )}
+
             </div>
           ))}
         </div>
@@ -478,240 +330,70 @@ export default function Tournaments() {
   }
 
   return (
-    <div
-      style={{
-        backgroundColor: isDashboardView ? "transparent" : theme.colors.darkGray,
-        backgroundImage:" url('https://st4.depositphotos.com/24297044/27344/v/450/depositphotos_273440920-stock-illustration-blue-background-gradient-abstract-texture.jpg')",
-        backgroundRepeat:'no-repeat',
-        backgroundSize:"cover",
-        backgroundPosition:'center',
-        backgroundAttachment:'fixed',
-        minHeight: isDashboardView ? "auto" : "100vh",
-        color: theme.colors.white,
-        fontFamily: theme.fonts.primary,
-        padding: isDashboardView ? "1rem" : "2rem",
-      }}
-    >
-      {/* Toast Container */}
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={true}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="dark"
-        style={{ zIndex: 9999 }}
-      />
+    <div className={`tournaments-page-wrapper ${isDashboardView ? 'dashboard-mode' : ''}`}>
+      <ToastContainer position="top-right" autoClose={3000} theme="dark" />
 
-      {isLoggedIn && (
+      {isLoggedIn && !isDashboardView && (
         <>
           <UserSideNav />
-          <button
-            onClick={handleBack}
-            style={{
-              marginLeft: "90%",
-              padding: "10px 20px",
-              borderRadius: "6px",
-              border: "none",
-              background: theme.gradients.secondaryButton,
-              color: theme.colors.white,
-              cursor: "pointer",
-              fontFamily: theme.fonts.primary,
-              fontSize: "1rem",
-              boxShadow: theme.shadows.buttonShadow,
-              transition: theme.animations.transition,
-            }}
-          >
-            Back
+          <button onClick={handleBack} className="floating-back-btn">
+            ← Back
           </button>
         </>
       )}
 
-      <div
-        style={{
-          position: "sticky",
-          top: "10%",
-          border: "2px solid #81959fff",
-          background: "#ffffff16",
-          borderRadius: "10px",
-          width: "85vw",
-          margin: "6% auto",
-          padding: "1% 2%",
-          height: "max-content",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: theme.sizes.titleFontSize,
-            textAlign: "center",
-            marginBottom: "1rem",
-            textShadow: theme.shadows.titleGlow,
-          }}
-        >
-          Playzone Tournaments
-        </h1>
+      <div className="tournaments-main-content">
+        <h1 className="tournaments-page-title">Playzone Arena</h1>
 
-        {/* ✅ FILTERS SECTION */}
-        <div style={{ marginBottom: "2rem" }}>
-          {/* Status Filters */}
-          <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-            <div style={{ marginBottom: "0.5rem", color: theme.colors.lightGray, fontSize: "0.9rem" }}>
+        {/* Filters Section */}
+        <div className="arena-filters-container">
+          <div className="status-filters">
+            <div className="filter-count-text">
               Showing {filtered.length} tournament{filtered.length !== 1 ? 's' : ''} 
               {filter !== "all" && ` (${filter})`}
               {dateFilter !== "all" && ` on ${getAvailableDates().find(d => d.value === dateFilter)?.label || dateFilter}`}
             </div>
             
-            <div style={{ marginBottom: "1rem" }}>
-              <button
-                onClick={() => setFilter("all")}
-                style={{
-                  margin: "0 0.5rem",
-                  padding: "0.5rem 1rem",
-                  border: "none",
-                  borderRadius: "4px",
-                  color: "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 0 10px #ff00ff",
-                  background: filter === "all" ? theme.gradients.primaryButton : theme.gradients.secondaryButton,
-                }}
-              >
+            <div className="filter-btn-group">
+              <button onClick={() => setFilter("all")} className={`filter-btn ${filter === "all" ? "active" : ""}`}>
                 All ({tournaments.length - tournaments.filter(t => t.status === "completed").length})
               </button>
-              <button
-                onClick={() => setFilter("upcoming")}
-                style={{
-                  margin: "0 0.5rem",
-                  padding: "0.5rem 1rem",
-                  border: "none",
-                  borderRadius: "4px",
-                  color: "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 0 10px #ff00ff",
-                  background: filter === "upcoming" ? theme.gradients.primaryButton : theme.gradients.secondaryButton,
-                }}
-              >
+              <button onClick={() => setFilter("upcoming")} className={`filter-btn ${filter === "upcoming" ? "active" : ""}`}>
                 Upcoming ({tournaments.filter(t => t.status === "pending" || t.status === "running").length})
               </button>
-              <button
-                onClick={() => setFilter("running")}
-                style={{
-                  margin: "0 0.5rem",
-                  padding: "0.5rem 1rem",
-                  border: "none",
-                  borderRadius: "4px",
-                  color: "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 0 10px #ff00ff",
-                  background: filter === "running" ? theme.gradients.primaryButton : theme.gradients.secondaryButton,
-                }}
-              >
+              <button onClick={() => setFilter("running")} className={`filter-btn ${filter === "running" ? "active" : ""}`}>
                 Running ({tournaments.filter(t => t.status === "running").length})
               </button>
-              <button
-                onClick={() => setFilter("completed")}
-                style={{
-                  margin: "0 0.5rem",
-                  padding: "0.5rem 1rem",
-                  border: "none",
-                  borderRadius: "4px",
-                  color: "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 0 10px #ff00ff",
-                  background: filter === "completed" ? theme.gradients.primaryButton : theme.gradients.secondaryButton,
-                }}
-              >
+              <button onClick={() => setFilter("completed")} className={`filter-btn ${filter === "completed" ? "active" : ""}`}>
                 Completed ({tournaments.filter(t => t.status === "completed").length})
               </button>
             </div>
           </div>
 
-          {/* ✅ DATE FILTER DROPDOWN */}
-          <div style={{ textAlign: "center" }}>
-            <label style={{ 
-              marginRight: "0.5rem", 
-              color: theme.colors.lightGray,
-              fontSize: "1rem",
-              fontWeight: "bold"
-            }}>
-               Filter by Date:
-            </label>
-            <select
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              style={{
-                padding: "0.5rem 1rem",
-                borderRadius: "4px",
-                border: "1px solid #555",
-                background: "#1a1a1a",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: "1rem",
-                boxShadow: "0 0 10px rgba(255,0,255,0.3)",
-                outline: "none",
-                minWidth: "200px"
-              }}
-            >
-              <option value="all"> All Dates ({tournaments.length})</option>
+          <div className="date-filter">
+            <label>Filter by Date:</label>
+            <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="date-select">
+              <option value="all">All Dates ({tournaments.length})</option>
               {getAvailableDates().map(({ value, label }) => {
                 const count = tournaments.filter(t => t.date === value).length
-                return (
-                  <option key={value} value={value}>
-                    {label} ({count})
-                  </option>
-                )
+                return <option key={value} value={value}>{label} ({count})</option>
               })}
             </select>
             
-            {/* Clear date filter button */}
             {dateFilter !== "all" && (
-              <button
-                onClick={() => setDateFilter("all")}
-                style={{
-                  marginLeft: "0.5rem",
-                  padding: "0.5rem 1rem",
-                  border: "none",
-                  borderRadius: "4px",
-                  color: "#fff",
-                  cursor: "pointer",
-                  background: theme.gradients.secondaryButton,
-                  fontSize: "0.9rem"
-                }}
-              >
+              <button onClick={() => setDateFilter("all")} className="clear-date-btn">
                 ✕ Clear
               </button>
             )}
           </div>
         </div>
 
+        {/* Tournament Rendering */}
         {filtered.length === 0 ? (
-          <div style={{
-            textAlign: "center",
-            padding: "3rem",
-            color: theme.colors.lightGray,
-            fontSize: "1.2rem"
-          }}>
+          <div className="empty-arena-state">
             <h3>No tournaments found</h3>
             <p>No tournaments match the current filter criteria.</p>
-            <button
-              onClick={() => {
-                setFilter("all")
-                setDateFilter("all")
-              }}
-              style={{
-                marginTop: "1rem",
-                padding: "0.75rem 1.5rem",
-                border: "none",
-                borderRadius: "4px",
-                color: "#fff",
-                cursor: "pointer",
-                boxShadow: "0 0 10px #ff00ff",
-                background: theme.gradients.primaryButton,
-              }}
-            >
+            <button onClick={() => { setFilter("all"); setDateFilter("all"); }} className="btn-primary-gaming mt-3">
               Show All Tournaments
             </button>
           </div>
@@ -723,42 +405,16 @@ export default function Tournaments() {
           </>
         )}
 
+        {/* Modals */}
         {showLoginPrompt && selectedTournament && (
-          <LoginPrompt
-            tournament={selectedTournament}
-            navigate={navigate}
-            onClose={() => {
-              setShowLoginPrompt(false)
-              setSelectedTournament(null)
-            }}
-          />
+          <LoginPrompt tournament={selectedTournament} navigate={navigate} onClose={() => { setShowLoginPrompt(false); setSelectedTournament(null); }} />
         )}
 
         {showTeamForm && selectedTournament && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              backgroundColor: "rgba(0,0,0,0.7)",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              zIndex: 1000,
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: "#111",
-                padding: "2rem",
-                borderRadius: "10px",
-                width: "90%",
-                maxWidth: "420px",
-                textAlign: "center",
-                border: `1px solid ${theme.colors.primary}`,
-              }}
-            >
+          <div className="modal-overlay">
+            <div className="modal-card">
               <h2>Register Team</h2>
-              <p>Entry Fee: ₹{selectedTournament.entryFee}</p>
+              <p className="modal-subtitle">Entry Fee: ₹{selectedTournament.entryFee}</p>
               <form onSubmit={handleTeamSave}>
                 <input
                   type="text"
@@ -766,45 +422,13 @@ export default function Tournaments() {
                   value={teamName}
                   onChange={(e) => setTeamName(e.target.value)}
                   required
-                  style={{
-                    width: "90%",
-                    padding: "10px",
-                    margin: "10px 0",
-                    borderRadius: "5px",
-                    border: "1px solid #555",
-                  }}
+                  className="auth-input mb-3"
                 />
-                <div style={{ display: "flex", justifyContent: "center", gap: "1rem" }}>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    style={{
-                      margin: "0 0.5rem",
-                      padding: "0.5rem 1rem",
-                      border: "none",
-                      borderRadius: "4px",
-                      color: "#fff",
-                      cursor: "pointer",
-                      boxShadow: "0 0 10px #ff00ff",
-                      background: theme.gradients.primaryButton,
-                    }}
-                  >
-                    {loading ? "Saving..." : "Save"}
+                <div className="modal-btn-group">
+                  <button type="submit" disabled={loading} className="btn-primary-gaming">
+                    {loading ? "Saving..." : "Save & Continue"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowTeamForm(false)}
-                    style={{
-                      margin: "0 0.5rem",
-                      padding: "0.5rem 1rem",
-                      border: "none",
-                      borderRadius: "4px",
-                      color: "#fff",
-                      cursor: "pointer",
-                      boxShadow: "0 0 10px #ff00ff",
-                      background: theme.gradients.secondaryButton,
-                    }}
-                  >
+                  <button type="button" onClick={() => setShowTeamForm(false)} className="btn-secondary-gaming">
                     Cancel
                   </button>
                 </div>
@@ -814,84 +438,27 @@ export default function Tournaments() {
         )}
 
         {showConfirmPay && selectedTournament && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              backgroundColor: "rgba(0,0,0,0.7)",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              zIndex: 1100,
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: "#111",
-                padding: "2rem",
-                borderRadius: "10px",
-                width: "90%",
-                maxWidth: "520px",
-                border: `1px solid ${theme.colors.primary}`,
-              }}
-            >
-              <h2 style={{ marginTop: 0 }}>Confirm Registration</h2>
-              <div style={{ marginBottom: "1rem", color: theme.colors.lightGray }}>
-                <p>
-                  <strong>Tournament:</strong> {selectedTournament.id}
-                </p>
-                <p>
-                  <strong>Game:</strong> {selectedTournament.game}
-                </p>
-                <p>
-                  <strong>Map:</strong> {selectedTournament.map}
-                </p>
-                <p>
-                  <strong>Date:</strong> {selectedTournament.date} {selectedTournament.time}
-                </p>
-                <p>
-                  <strong>Team:</strong> {teamName}
-                </p>
-                <p>
-                  <strong>Entry Fee:</strong> ₹{selectedTournament.entryFee}
-                </p>
+          <div className="modal-overlay">
+            <div className="modal-card">
+              <h2>Confirm Registration</h2>
+              <div className="modal-details-box">
+                <p><strong>Tournament:</strong> {selectedTournament.id}</p>
+                <p><strong>Game:</strong> {selectedTournament.game}</p>
+                <p><strong>Map:</strong> {selectedTournament.map}</p>
+                <p><strong>Date:</strong> {selectedTournament.date} {selectedTournament.time}</p>
+                <p><strong>Team:</strong> <span className="text-cyan">{teamName}</span></p>
+                <p><strong>Entry Fee:</strong> <span className="text-pink">₹{selectedTournament.entryFee}</span></p>
               </div>
-              <div style={{ display: "flex", gap: "12px" }}>
-                <button
-                  onClick={handlePayAndRegister}
-                  disabled={loading}
-                  style={{
-                    margin: "0 0.5rem",
-                    padding: "0.75rem 1.5rem",
-                    border: "none",
-                    borderRadius: "4px",
-                    color: "#fff",
-                    cursor: "pointer",
-                    boxShadow: "0 0 10px #ff00ff",
-                    background: theme.gradients.primaryButton,
-                  }}
-                >
-                  {loading ? "Processing..." : "Pay & Join"}
+              <div className="modal-btn-group">
+                <button onClick={handlePayAndRegister} disabled={loading} className="btn-primary-gaming">
+                  {loading ? "Processing..." : "Pay & Join Match"}
                 </button>
-                <button
-                  onClick={() => setShowConfirmPay(false)}
-                  style={{
-                    margin: "0 0.5rem",
-                    padding: "0.75rem 1.5rem",
-                    border: "none",
-                    borderRadius: "4px",
-                    color: "#fff",
-                    cursor: "pointer",
-                    boxShadow: "0 0 10px #ff00ff",
-                    background: theme.gradients.secondaryButton,
-                  }}
-                >
-                  Close
+                <button onClick={() => setShowConfirmPay(false)} className="btn-secondary-gaming">
+                  Cancel
                 </button>
               </div>
-              <p style={{ marginTop: 10, color: theme.colors.lightGray }}>
-                Payment uses your wallet balance. If balance is insufficient, you'll be redirected to add funds via UPI
-                and can resume here.
+              <p className="modal-footer-note">
+                Payment uses your wallet balance. If balance is insufficient, you will be automatically redirected to add funds.
               </p>
             </div>
           </div>
@@ -902,63 +469,15 @@ export default function Tournaments() {
 }
 
 const LoginPrompt = ({ onClose, tournament, navigate }) => (
-  <div
-    style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: "rgba(0,0,0,0.8)",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 1000,
-    }}
-  >
-    <div
-      style={{
-        backgroundColor: theme.colors.backgroundColor,
-        padding: "2rem",
-        borderRadius: "8px",
-        maxWidth: "400px",
-        width: "90%",
-        textAlign: "center",
-        border: `1px solid ${theme.colors.primary}`,
-        boxShadow: theme.shadows.modalShadow,
-      }}
-    >
-      <h2 style={{ color: theme.colors.primary, marginBottom: "1rem" }}>Login Required</h2>
-      <p style={{ marginBottom: "1.5rem", color: theme.colors.white }}>Please login to register for {tournament.id}</p>
-      <div style={{ display: "flex", justifyContent: "center", gap: "1rem" }}>
-        <button
-          onClick={() => navigate("/login")}
-          style={{
-            margin: "0 0.5rem",
-            padding: "0.75rem 2rem",
-            border: "none",
-            borderRadius: "4px",
-            color: "#fff",
-            cursor: "pointer",
-            boxShadow: "0 0 10px #ff00ff",
-            background: theme.gradients.primaryButton,
-          }}
-        >
-          Login
+  <div className="modal-overlay">
+    <div className="modal-card">
+      <h2 className="text-cyan">Login Required</h2>
+      <p className="modal-subtitle">Please login to register for {tournament.id}</p>
+      <div className="modal-btn-group">
+        <button onClick={() => navigate("/login")} className="btn-primary-gaming">
+          Login Now
         </button>
-        <button
-          onClick={onClose}
-          style={{
-            margin: "0 0.5rem",
-            padding: "0.75rem 2rem",
-            border: "none",
-            borderRadius: "4px",
-            color: "#fff",
-            cursor: "pointer",
-            boxShadow: "0 0 10px #ff00ff",
-            background: theme.gradients.secondaryButton,
-          }}
-        >
+        <button onClick={onClose} className="btn-secondary-gaming">
           Cancel
         </button>
       </div>

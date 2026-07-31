@@ -1,156 +1,67 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import theme from "./theme";
+import "./Footer.css";
 
 export default function Footer() {
-  const styles = {
-    footer: {
-      width: "100%",
-      background: theme.gradients.navbarAlt1,
-      color: theme.colors.white,
-      padding: "40px 0 20px",
-      fontFamily: theme.fonts.primary,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      boxShadow: theme.shadows.sectionTitleGlow,
-      borderTop: `2px solid ${theme.colors.primary}`,
-      zIndex: 10,
-    },
-
-    container: {
-      maxWidth: "1200px",
-      width: "100%",
-      margin: "0 auto",
-      padding: "0 20px",
-      display: "grid",
-      gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-      gap: "30px",
-    },
-
-    section: {
-      marginBottom: "20px",
-    },
-
-    sectionTitle: {
-      color: theme.colors.primaryGold,
-      fontSize: "1.2em",
-      marginBottom: "15px",
-      fontWeight: "bold",
-      textShadow: theme.shadows.textGlow,
-    },
-
-    link: {
-      color: theme.colors.white,
-      textDecoration: "none",
-      display: "block",
-      marginBottom: "10px",
-      transition: "all 0.3s ease",
-    },
-
-    linkHover: {
-      color: theme.colors.primaryGold,
-    },
-
-    email: {
-      color: theme.colors.primaryGreen,
-      textDecoration: "none",
-    },
-
-    text: {
-      color: theme.colors.white,
-      marginBottom: "10px",
-      lineHeight: "1.6",
-    },
-
-    copyright: {
-      textAlign: "center",
-      marginTop: "30px",
-      paddingTop: "20px",
-      borderTop: `1px solid ${theme.colors.primaryGold}`,
-      color: theme.colors.primaryGreen,
-      fontSize: "0.9em",
-    },
-  };
-
-  // Inline hover effect using event handlers to avoid style conflicts
-  const handleHover = (e, isHover) => {
-    e.target.style.color = isHover
-      ? theme.colors.primaryGold
-      : theme.colors.white;
-  };
-
   return (
-    <footer style={styles.footer}>
-      <div style={styles.container}>
-        {/* About */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>About PLAYZONE</h3>
-          <p style={styles.text}>
-            Your premier destination for mobile gaming tournaments. <br />
-            Compete, win, and become a champion in your favorite games.
+    <footer className="footer">
+      <div className="footer-container">
+        {/* About Section */}
+        <div className="footer-section">
+          <h3>About <span>PLAYZONE</span></h3>
+          <p>
+            India's premier e-sports tournament platform. Battle in BGMI, PUBG, COD & Free Fire 
+            with real cash prizes. Built by gamers, for champions who demand excellence.
+          </p>
+          <p>
+            Join thousands of competitive gamers and start your journey to e-sports glory today.
           </p>
         </div>
 
-        {/* Quick Links */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Quick Links</h3>
-          {["About", "Terms", "Privacy", "Contact"].map((item) => (
-            <Link
-              key={item}
-              to={`/${item.toLowerCase()}`}
-              style={styles.link}
-              onMouseEnter={(e) => handleHover(e, true)}
-              onMouseLeave={(e) => handleHover(e, false)}
+        {/* Quick Links Section */}
+        <div className="footer-section">
+          <h3>Quick Links</h3>
+          <Link to="/" className="footer-link">Home</Link>
+          <Link to="/tournaments" className="footer-link">Tournaments</Link>
+          <Link to="/about" className="footer-link">About Us</Link>
+          <Link to="/contact" className="footer-link">Contact</Link>
+          <Link to="/terms" className="footer-link">Terms of Service</Link>
+          <Link to="/privacy" className="footer-link">Privacy Policy</Link>
+        </div>
+
+        {/* Games Section */}
+        <div className="footer-section">
+          <h3>Tournaments</h3>
+          <Link to="/tournaments" className="footer-link">BGMI Tournaments</Link>
+          <Link to="/tournaments" className="footer-link">PUBG Mobile</Link>
+          <Link to="/tournaments" className="footer-link">Call of Duty</Link>
+          <Link to="/tournaments" className="footer-link">Free Fire</Link>
+          <Link to="/tournaments" className="footer-link">View All Games</Link>
+        </div>
+
+        {/* Support Section */}
+        <div className="footer-section">
+          <h3>Support</h3>
+          <p>📍 Mumbai, India</p>
+          <p>
+            📧 Email:{" "}
+            <a
+              href={`mailto:${process.env.REACT_APP_EMAIL}`}
+              className="footer-email"
             >
-              {item}
-            </Link>
-          ))}
-        </div>
-
-        {/* Contact Info */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Contact Info</h3>
-          <p style={styles.text}>
-            Mumbai, India <br />
-            Email:{" "}
-            <a href="mailto:omgtms2529@gmail.com" style={styles.email}>
-              omgtms2529@gmail.com
-            </a>
-            <br />
-            Support: 24/7 Available
+              {process.env.REACT_APP_EMAIL}
+</a>
           </p>
-        </div>
-
-        {/* Tournament Support */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Tournament Support</h3>
-          <Link
-            to="/tournaments"
-            style={styles.link}
-            onMouseEnter={(e) => handleHover(e, true)}
-            onMouseLeave={(e) => handleHover(e, false)}
-          >
-            Active Tournaments
-          </Link>
-          <Link
-            to="/contact"
-            style={styles.link}
-            onMouseEnter={(e) => handleHover(e, true)}
-            onMouseLeave={(e) => handleHover(e, false)}
-          >
+          <p>⏰ Support: 24/7 Available</p>
+          <p>⚡ Response Time: Within 30 minutes</p>
+          <Link to="/contact" className="footer-link" style={{ marginTop: "10px" }}>
             Report an Issue
           </Link>
-          <p style={styles.text}>
-            Emergency Support: Available 24/7
-            <br />
-            Response Time: Within 30 minutes
-          </p>
         </div>
       </div>
 
-      <div style={styles.copyright}>
-        <p>© {new Date().getFullYear()} PLAYZONE. All rights reserved.</p>
+      <div className="footer-copyright">
+        <p>© {new Date().getFullYear()} <span>PLAYZONE</span>. All rights reserved. | Built for Champions</p>
       </div>
     </footer>
   );

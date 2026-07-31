@@ -1,113 +1,146 @@
-// src/pages/About.js
 import React from "react";
-import theme from "../theme";
+import { Link } from "react-router-dom";
+import "./About.css";
 
 export default function About() {
-  const styles = {
-    container: {
-      minHeight: "100vh",
-      backgroundImage:" url('https://st4.depositphotos.com/24297044/27344/v/450/depositphotos_273440920-stock-illustration-blue-background-gradient-abstract-texture.jpg')",
-        backgroundRepeat:'no-repeat',
-        backgroundSize:"cover",
-        backgroundPosition:'center',
-        backgroundAttachment:'fixed',
-      color: theme.colors.white,
-      fontFamily: theme.fonts.primary,
-      padding: theme.spacing.sectionPadding,
-      textAlign: "center",
-      transition: theme.animations.transition,
-    },
-    title: {
-      fontSize: theme.sizes.titleFontSize,
-      textShadow: theme.shadows.text,
-      marginBottom: "20px",
-    },
-    subtitle: {
-      fontSize: theme.sizes.subtitleFontSize,
-      color: theme.colors.lightGray,
-      textShadow: theme.shadows.text,
-      marginBottom: "40px",
-    },
-    paragraph: {
-      maxWidth: "850px",
-      margin: "0 auto 30px auto",
-      fontSize: "1.1rem",
-      lineHeight: "1.8",
-      color: theme.colors.midGray,
-      fontFamily: theme.fonts.secondary,
-    },
-    highlightBox: {
-      margin: "0 auto",
-      padding: theme.spacing.cardPadding,
-      maxWidth: "900px",
-      border: theme.borders.card,
-      borderRadius: "12px",
-      background:' rgba(0,0,0,0.3)',
-      boxShadow: theme.shadows.card,
-      transition: theme.animations.transition,
-    },
-    highlightTitle: {
-      fontSize: theme.sizes.sectionTitleFontSize,
-      textShadow: theme.shadows.text,
-      color: theme.colors.primary,
-      marginBottom: "15px",
-    },
-    list: {
-      listStyle: "none",
-      padding: 0,
-      fontSize: "1.05rem",
-      lineHeight: "2",
-      color: theme.colors.lightGray,
-      fontFamily: theme.fonts.secondary,
-    },
-    spanPrimary: { color: theme.colors.primary },
-    spanSecondary: { color: theme.colors.secondary },
-    spanAccent: { color: theme.colors.accent },
-  };
-
   return (
-    <div style={styles.container}>
-      {/* Title */}
-      <h1 style={styles.title}>
-        About <span style={styles.spanPrimary}>Playzone</span>
-      </h1>
+    <div className="about-page-container">
+      {/* Hero Section */}
+      <div className="about-hero">
+        <span className="about-badge">⚡ About Playzone</span>
+        <h1 className="about-title">
+          DOMINATE THE <span>ARENA</span>
+        </h1>
+        <p className="about-subtitle">
+          India's premier e-sports tournament platform. Built by gamers, for champions who demand excellence.
+        </p>
+      </div>
 
-      {/* Subtitle */}
-      <h3 style={styles.subtitle}>
-        Your Gateway to Competitive Gaming & E-Sports
-      </h3>
+      {/* Stats Section */}
+      <div className="about-stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon">🎮</div>
+          <div className="stat-number">50K+</div>
+          <div className="stat-label">Active Gamers</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">🏆</div>
+          <div className="stat-number">2,500+</div>
+          <div className="stat-label">Tournaments Hosted</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">💰</div>
+          <div className="stat-number">₹50L+</div>
+          <div className="stat-label">Prize Pool Distributed</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">⚡</div>
+          <div className="stat-number">24/7</div>
+          <div className="stat-label">Support Available</div>
+        </div>
+      </div>
 
-      {/* Paragraphs */}
-      <p style={styles.paragraph}>
-        Playzone is an online platform that manages{" "}
-        <span style={styles.spanSecondary}>gaming tournaments</span>. We provide
-        a competitive environment where gamers can
-        <span style={styles.spanPrimary}> register</span>,{" "}
-        <span style={styles.spanAccent}>compete</span>, and{" "}
-        <span style={styles.spanSecondary}>track their progress</span>. Our
-        mission is to help players sharpen their skills, showcase their talent,
-        and even make a career in the ever-growing world of E-Sports.
-      </p>
+      {/* Mission Section */}
+      <div className="about-section">
+        <div className="section-header">
+          <h2 className="section-title">Our Mission</h2>
+          <div className="section-underline"></div>
+        </div>
+        <div className="about-content">
+          <p className="about-text">
+            Playzone is India's most competitive gaming tournament platform, designed to transform casual mobile gaming into a professional e-sports career. We provide a secure, fair, and rewarding environment where gamers can compete in BGMI, PUBG Mobile, Call of Duty, and Free Fire tournaments with real cash prizes.
+          </p>
+          <p className="about-text">
+            Our mission is to democratize e-sports in India by providing every gamer—from beginners to professionals—with the opportunity to showcase their skills, build their reputation, and earn real money doing what they love. We believe that every match counts, every victory matters, and every gamer deserves a chance to become a champion.
+          </p>
+        </div>
+      </div>
 
-      <p style={styles.paragraph}>
-        Whether you’re a casual player or a competitive professional, Playzone
-        rewards you based on your performance, ensuring that{" "}
-        <span style={styles.spanPrimary}>every match counts</span>. With
-        real-time updates, secure tournament handling, and an
-        <span style={styles.spanAccent}> engaging community</span>, Playzone is
-        designed for gamers, by gamers.
-      </p>
+      {/* Supported Games Section */}
+      <div className="about-section">
+        <div className="section-header">
+          <h2 className="section-title">Supported Games</h2>
+          <div className="section-underline"></div>
+        </div>
+        <div className="games-grid">
+          {[
+            { name: "BGMI", icon: "🎯", desc: "Battlegrounds Mobile India - The ultimate battle royale experience", color: "var(--accent-cyan)" },
+            { name: "PUBG Mobile", icon: "🪖", desc: "The original battle royale that started it all", color: "var(--accent-orange)" },
+            { name: "Call of Duty", icon: "💥", desc: "Fast-paced tactical shooter action", color: "var(--accent-pink)" },
+            { name: "Free Fire", icon: "🔥", desc: "Ultimate survival shooter with intense gameplay", color: "var(--accent-purple)" },
+          ].map((game, index) => (
+            <div key={index} className="game-card" style={{ borderColor: game.color }}>
+              <div className="game-icon" style={{ color: game.color }}>{game.icon}</div>
+              <h3 className="game-name">{game.name}</h3>
+              <p className="game-desc">{game.desc}</p>
+              <Link to="/tournaments" className="game-link">
+                View Tournaments →
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
 
-      {/* Highlight Section */}
-      <div style={styles.highlightBox}>
-        <h2 style={styles.highlightTitle}>Why Choose Playzone?</h2>
-        <ul style={styles.list}>
-          <li>🎮 Easy tournament registration & participation</li>
-          <li>📊 Track your history & performance analytics</li>
-          <li>🏆 Compete in a fair & secure environment</li>
-          <li>💰 Rewards for achievements and victories</li>
-          <li>🌐 Build your E-Sports career</li>
-        </ul>
+      {/* Why Choose Us Section */}
+      <div className="about-section">
+        <div className="section-header">
+          <h2 className="section-title">Why Choose Playzone?</h2>
+          <div className="section-underline"></div>
+        </div>
+        <div className="features-grid">
+          {[
+            { icon: "🏆", title: "Pro-Level Tournaments", desc: "Structured brackets, fair-play enforcement, and automated room ID delivery. No delays, no disputes." },
+            { icon: "⚡", title: "Instant Wallet Payouts", desc: "Winnings credited automatically to your dashboard within minutes. Zero withdrawal hassles, 24/7 support." },
+            { icon: "🔒", title: "Secure & Fair Gaming", desc: "Anti-cheat measures, verified payments, and transparent tournament results. Your gaming experience, protected." },
+            { icon: "📊", title: "Performance Analytics", desc: "Track your gaming stats, win rate, and tournament history. Build your e-sports portfolio." },
+            { icon: "💬", title: "Squad Social Hub", desc: "Connect with fellow gamers, build your team reputation, track rivalries, and find your perfect squad." },
+            { icon: "🎁", title: "Daily Rewards & Bonuses", desc: "Earn bonus credits, referral rewards, and special tournament entries. More ways to boost your gaming bankroll." },
+          ].map((feature, index) => (
+            <div key={index} className="feature-card">
+              <div className="feature-icon">{feature.icon}</div>
+              <h3 className="feature-title">{feature.title}</h3>
+              <p className="feature-desc">{feature.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tournament Types Section */}
+      <div className="about-section">
+        <div className="section-header">
+          <h2 className="section-title">Tournament Types</h2>
+          <div className="section-underline"></div>
+        </div>
+        <div className="tournament-types">
+          {[
+            { tier: "Elite", prize: "₹10,000+", entry: "₹500+", desc: "For professional gamers with high skill levels" },
+            { tier: "Challenger", prize: "₹5,000 - ₹10,000", entry: "₹200 - ₹500", desc: "For experienced players looking to level up" },
+            { tier: "Starter", prize: "₹500 - ₹5,000", entry: "₹50 - ₹200", desc: "Perfect for beginners to start their journey" },
+          ].map((type, index) => (
+            <div key={index} className="tournament-type-card">
+              <div className="tier-badge">{type.tier}</div>
+              <h3 className="tier-prize">{type.prize}</h3>
+              <p className="tier-entry">Entry: {type.entry}</p>
+              <p className="tier-desc">{type.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* CTA Section */}
+      <div className="about-cta">
+        <h2 className="cta-title">Ready to Start Your Journey?</h2>
+        <p className="cta-subtitle">
+          Join thousands of competitive gamers already battling on Playzone. Create your free account and start your journey to e-sports glory today.
+        </p>
+        <div className="cta-buttons">
+          <Link to="/signup" className="btn-primary-gaming">
+            <span>🚀</span> Join Now
+          </Link>
+          <Link to="/tournaments" className="btn-secondary-gaming">
+            <span>🎮</span> Browse Tournaments
+          </Link>
+        </div>
       </div>
     </div>
   );

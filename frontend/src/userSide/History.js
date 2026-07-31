@@ -3,9 +3,9 @@
 // src/userSide/History.js
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import theme from "../theme"
 import UserSideNav from "./UserSideNav"
 import axios from "axios"
+import "./History.css" // ✅ INJECTING THE NEW CSS
 
 const History = () => {
   const navigate = useNavigate()
@@ -74,12 +74,21 @@ const History = () => {
     return matchesGame && matchesResult && matchesSearch && matchesDate
   })
 
+  const getResultClass = (result) => {
+    switch (result.toLowerCase()) {
+      case "winner": return "result-winner"
+      case "2nd place": return "result-second"
+      case "3rd place": return "result-third"
+      default: return ""
+    }
+  }
+
   // Result badge color
   const getResultColor = (result) => {
     switch (result.toLowerCase()) {
       case "winner":
         return "#FFD700" // Gold
-      case "2nd Place":
+      case "2nd place":
         return "#C0C0C0" // Silver
       case "3rd place":
         return "#CD7F32" // Bronze
@@ -89,242 +98,111 @@ const History = () => {
   }
 
   return (
-    <div
-      style={{
-        padding: "20px",
-        // maxWidth: '1200px',
-        margin: "0 auto",
-        backgroundColor: theme.colors.backgroundColor,
-        minHeight: "100vh",
-        color: theme.colors.white,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", marginBottom: "40px", position: "relative" }}>
-        <UserSideNav />
-        <button
-          onClick={() => {
-            navigate(-1)
-          }}
-          style={{
-            padding: "10px 20px",
-            borderRadius: "6px",
-            marginTop: "50px",
-            background: theme.gradients.secondaryButton,
-            color: theme.colors.white,
-            cursor: "pointer",
-            fontFamily: theme.fonts.primary,
-            fontSize: "1rem",
-            boxShadow: theme.shadows.buttonShadow,
-            transition: theme.animations.transition,
-            border: "none",
-            position: "absolute",
-            right: "50px",
-          }}
-        >
-          ← Back
-        </button>
-      </div>
+    <div className="history-page-wrapper">
+      <UserSideNav />
+      
+      <button onClick={() => navigate(-1)} className="floating-back-btn">
+        ← Back
+      </button>
 
-      {/* Title */}
-      <h1
-        style={{
-          fontSize: "2.5rem",
-          marginTop: "5rem",
-          color: theme.colors.primary,
-          textAlign: "center",
-          textShadow: theme.shadows.headerGlow,
-        }}
-      >
-        Tournament History
-      </h1>
+      <div className="history-main-content">
+        <h1 className="history-page-title">Tournament History</h1>
 
-      {/* Filters Section */}
-      <div
-        style={{
-          background: "rgba(10, 10, 10, 0.6)",
-          width: "80%",
-          padding: "20px",
-          //   borderRadius: '12px',
-          marginBottom: "2rem",
-          margin: "0 auto",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "20px",
-          border: `1px solid ${theme.colors.secondary}`,
-          borderRadius: "6px",
-          boxShadow: "0 0 16px rgba(0, 255, 224, 0.2)",
-        }}
-      >
-        {/* Game type filter */}
-        <select
-          value={gameType}
-          onChange={(e) => setGameType(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: "200px",
-            padding: "10px",
-            borderRadius: "8px",
-            backgroundColor: theme.colors.navbarDark,
-            border: `1px solid ${theme.colors.primary}`,
-            color: theme.colors.white,
-          }}
-        >
-          <option value="all">All Games</option>
-          <option value="BGMI">BGMI</option>
-          <option value="COD">CALL OF DUTY</option>
-          <option value="PUBG">PUBG</option>
-          <option value="FREE FIRE">FREE FIRE</option>
-        </select>
+        {/* Filters Section */}
+        <div className="history-filters-container">
+          {/* Game type filter */}
+          <select
+            value={gameType}
+            onChange={(e) => setGameType(e.target.value)}
+            className="history-filter-input"
+          >
+            <option value="all">All Games</option>
+            <option value="BGMI">BGMI</option>
+            <option value="COD">CALL OF DUTY</option>
+            <option value="PUBG">PUBG</option>
+            <option value="FREE FIRE">FREE FIRE</option>
+          </select>
 
-        {/* Date filter */}
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: "200px",
-            padding: "10px",
-            borderRadius: "8px",
-            backgroundColor: theme.colors.navbarDark,
-            border: `1px solid ${theme.colors.primary}`,
-            color: theme.colors.white,
-          }}
-        />
+          {/* Date filter */}
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="history-filter-input"
+          />
 
-        {/* Result filter */}
-        <select
-          value={resultFilter}
-          onChange={(e) => setResultFilter(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: "200px",
-            padding: "10px",
-            borderRadius: "8px",
-            backgroundColor: theme.colors.navbarDark,
-            border: `1px solid ${theme.colors.primary}`,
-            color: theme.colors.white,
-          }}
-        >
-          <option value="all">All Results</option>
-          <option value="winner">Winners</option>
-          <option value="2nd Place">2nd place</option>
-          <option value="3rd place">3rd Place</option>
-          {/* <option value="participant">Participants</option> */}
-        </select>
+          {/* Result filter */}
+          <select
+            value={resultFilter}
+            onChange={(e) => setResultFilter(e.target.value)}
+            className="history-filter-input"
+          >
+            <option value="all">All Results</option>
+            <option value="winner">Winners</option>
+            <option value="2nd Place">2nd place</option>
+            <option value="3rd place">3rd Place</option>
+            <option value="participant">Participants</option>
+          </select>
 
-        {/* Search */}
-        <input
-          type="text"
-          placeholder="Search tournaments..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: "200px",
-            padding: "10px",
-            borderRadius: "8px",
-            backgroundColor: theme.colors.navbarDark,
-            border: `1px solid ${theme.colors.primary}`,
-            color: theme.colors.white,
-          }}
-        />
-      </div>
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Search tournaments..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="history-filter-input"
+          />
+        </div>
 
-      {/* Cards Section */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-          gap: "20px",
-          margin: "3% 9%",
-        }}
-      >
-        {loading ? (
-          <div style={{ textAlign: "center", marginTop: "2rem", color: theme.colors.lightGray }}>
-            <h2>Loading...</h2>
-          </div>
-        ) : filteredHistory.length > 0 ? (
-          filteredHistory.map((tournament) => (
-            <div
-              key={tournament.id}
-              style={{
-                backgroundColor: theme.colors.navbarDark,
-                borderRadius: "12px",
-                padding: "20px",
-                border: `1px solid ${theme.colors.primary}`,
-                boxShadow: "0 0 16px rgba(255, 0, 127, 0.1)",
-                transition: "all 0.3s ease",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "15px",
-                }}
-              >
-                <h3 style={{ margin: 0, color: theme.colors.secondary }}>{tournament.tournamentName}</h3>
-                <span
-                  style={{
-                    padding: "4px 12px",
-                    borderRadius: "20px",
-                    backgroundColor: getResultColor(tournament.result),
-                    color: "white",
-                    fontSize: "0.875rem",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {tournament.result}
-                </span>
-              </div>
-
-              <p style={{ margin: "5px 0", color: theme.colors.lightGray }}>🎮 {tournament.game}</p>
-              <p style={{ margin: "5px 0", color: theme.colors.lightGray }}>
-                📅 {new Date(tournament.date).toLocaleDateString()}
-              </p>
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  color: theme.colors.lightGray,
-                  fontSize: "0.875rem",
-                }}
-              >
-                <p>Prize Won: {tournament.prizeWon}</p>
-                <p>Entry Fee: ₹{tournament.entryFee}</p>
-                {/* <p>Participants: {tournament.participants}</p> */}
-              </div>
-
-              {/* View Results Button */}
-              {tournament.resultPublished && (
-                <div style={{ marginTop: "15px", textAlign: "center" }}>
-                  <button
-                    onClick={() => navigate(`/tournaments/results/${tournament.tournamentName}`)}
-                    style={{
-                      padding: "8px 16px",
-                      borderRadius: "6px",
-                      border: "none",
-                      background: theme.gradients.primaryButton,
-                      color: theme.colors.white,
-                      cursor: "pointer",
-                      boxShadow: theme.shadows.buttonShadow,
-                      fontWeight: 600,
-                      fontSize: "0.9rem"
-                    }}
-                  >
-                    🏆 View Results
-                  </button>
-                </div>
-              )}
+        {/* Cards Section */}
+        <div className="history-grid-container">
+          {loading ? (
+            <div className="history-loading-state">
+              <h2>Loading Career History...</h2>
             </div>
-          ))
-        ) : (
-          <div style={{ textAlign: "center", marginTop: "2rem", color: theme.colors.lightGray }}>
-            <h2>No tournament history found matching your filters</h2>
-          </div>
-        )}
+          ) : filteredHistory.length > 0 ? (
+            filteredHistory.map((tournament) => (
+              <div key={tournament.id} className={`history-card ${getResultClass(tournament.result)}`}>
+                
+                <div className="history-card-header">
+                  <h3 className="history-tourney-name">{tournament.tournamentName}</h3>
+                  <span
+                    className="history-result-badge"
+                    style={{ backgroundColor: getResultColor(tournament.result) }}
+                  >
+                    {tournament.result}
+                  </span>
+                </div>
+
+                <div className="history-card-body">
+                  <p>🎮 <strong>Game:</strong> {tournament.game}</p>
+                  <p>📅 <strong>Date:</strong> {new Date(tournament.date).toLocaleDateString()}</p>
+                  
+                  <div className="history-financials">
+                    <p className="history-entry">Entry: ₹{tournament.entryFee}</p>
+                    <p className="history-prize">Won: {tournament.prizeWon}</p>
+                  </div>
+                </div>
+
+                {/* View Results Button */}
+                {tournament.resultPublished && (
+                  <div className="history-card-footer">
+                    <button
+                      onClick={() => navigate(`/tournaments/results/${tournament.tournamentName}`)}
+                      className="btn-primary-gaming w-100"
+                    >
+                      🏆 View Match Results
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="history-empty-state">
+              <h2>No tournament history found matching your filters</h2>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

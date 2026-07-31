@@ -1,0 +1,160 @@
+/* ==========================================================================
+   TYPE: PAGE-SPECIFIC
+   FILE: src/Footer.css
+   APPLIED TO: src/Footer.js
+   PURPOSE: Premium gaming footer with neon effects and modern layout
+   ========================================================================== */
+
+.footer {
+  width: 100%;
+  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+  border-top: 2px solid var(--accent-cyan);
+  padding: 80px 0 30px;
+  color: var(--text-primary);
+  margin-top: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gradient-primary);
+  animation: glowPulse 3s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.footer-container {
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 50px;
+}
+
+.footer-section h3 {
+  font-family: 'Rajdhani', sans-serif;
+  color: var(--accent-cyan);
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 24px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  position: relative;
+  display: inline-block;
+}
+
+.footer-section h3::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: 2px;
+}
+
+.footer-section p {
+  color: var(--text-secondary);
+  line-height: 1.8;
+  font-size: 1rem;
+  margin-bottom: 16px;
+  font-weight: 400;
+}
+
+.footer-link {
+  display: block;
+  color: var(--text-secondary);
+  text-decoration: none;
+  margin-bottom: 14px;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: var(--hover-transition);
+  position: relative;
+  padding-left: 0;
+}
+
+.footer-link::before {
+  content: '▸';
+  position: absolute;
+  left: -15px;
+  opacity: 0;
+  transition: var(--hover-transition);
+  color: var(--accent-cyan);
+}
+
+.footer-link:hover {
+  color: var(--accent-cyan);
+  transform: translateX(8px);
+}
+
+.footer-link:hover::before {
+  opacity: 1;
+  left: -20px;
+}
+
+.footer-email {
+  color: var(--accent-cyan);
+  text-decoration: none;
+  font-weight: 600;
+  font-family: 'Rajdhani', sans-serif;
+  transition: var(--hover-transition);
+  position: relative;
+}
+
+.footer-email:hover {
+  color: var(--accent-pink);
+  text-shadow: 0 0 15px rgba(255, 77, 138, 0.5);
+}
+
+.footer-copyright {
+  text-align: center;
+  margin-top: 60px;
+  padding-top: 30px;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 1px;
+}
+
+.footer-copyright span {
+  color: var(--accent-cyan);
+  font-weight: 700;
+}
+
+/* Mobile Responsiveness */
+@media screen and (max-width: 768px) {
+  .footer {
+    padding: 60px 0 30px;
+  }
+
+  .footer-container {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .footer-section h3 {
+    font-size: 1.2rem;
+  }
+
+  .footer-link::before {
+    display: none;
+  }
+
+  .footer-link:hover {
+    transform: none;
+  }
+}

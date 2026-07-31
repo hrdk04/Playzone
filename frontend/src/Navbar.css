@@ -1,0 +1,213 @@
+/* ==========================================================================
+   TYPE: PAGE-SPECIFIC
+   FILE: src/Navbar.css
+   APPLIED TO: src/Navbar.js
+   PURPOSE: Premium gaming navbar with glassmorphism and neon effects
+   ========================================================================== */
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 80px;
+  z-index: 1000;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 5%;
+  background: var(--bg-secondary);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 2px solid var(--accent-cyan);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.navbar-logo {
+  font-family: 'Rajdhani', sans-serif;
+  color: var(--accent-cyan);
+  font-size: 2rem;
+  font-weight: 800;
+  text-decoration: none;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-shadow: 0 0 20px rgba(0, 245, 212, 0.5);
+  transition: var(--hover-transition);
+}
+
+.navbar-logo:hover {
+  text-shadow: 0 0 30px rgba(0, 245, 212, 0.8);
+  transform: scale(1.05);
+}
+
+.navbar-user-welcome {
+  margin-left: 20px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  background: var(--bg-tertiary);
+  padding: 8px 18px;
+  border-radius: 25px;
+  border: 1px solid var(--accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 0 10px rgba(0, 245, 212, 0.2);
+}
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navbar-links a {
+  font-family: 'Rajdhani', sans-serif;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 8px;
+  transition: var(--hover-transition);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  overflow: hidden;
+}
+
+.navbar-links a::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.navbar-links a:hover {
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.navbar-links a:hover::before {
+  opacity: 1;
+}
+
+.navbar-links a.active-link {
+  color: var(--accent-cyan);
+  background: rgba(0, 245, 212, 0.1);
+  border: 1px solid var(--accent-cyan);
+  box-shadow: 0 0 15px rgba(0, 245, 212, 0.3);
+}
+
+.navbar-logout-btn {
+  font-family: 'Rajdhani', sans-serif;
+  padding: 10px 24px;
+  background: var(--gradient-secondary);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: var(--hover-transition);
+  box-shadow: var(--glow-pink);
+}
+
+.navbar-logout-btn:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 0 40px rgba(255, 77, 138, 0.6);
+}
+
+.menu-icon {
+  display: none;
+  cursor: pointer;
+  font-size: 2rem;
+  color: var(--text-primary);
+  padding: 10px;
+  border-radius: 8px;
+  transition: var(--hover-transition);
+}
+
+.menu-icon:hover {
+  background: var(--bg-tertiary);
+  color: var(--accent-cyan);
+}
+
+/* Mobile Responsiveness */
+@media screen and (max-width: 768px) {
+  .navbar {
+    height: 70px;
+    padding: 0 4%;
+  }
+
+  .navbar-logo {
+    font-size: 1.6rem;
+  }
+
+  .navbar-user-welcome {
+    display: none;
+  }
+
+  .menu-icon {
+    display: block;
+  }
+
+  .navbar-links {
+    display: none;
+    position: absolute;
+    top: 70px;
+    right: 0;
+    width: 100%;
+    background: var(--bg-secondary);
+    flex-direction: column;
+    padding: 20px 0;
+    border-bottom: 2px solid var(--accent-cyan);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  .navbar-links.active {
+    display: flex;
+    animation: slideDown 0.3s ease;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .navbar-links a {
+    width: 100%;
+    text-align: center;
+    padding: 16px 0;
+    border-radius: 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 1.1rem;
+  }
+
+  .navbar-links a:last-child {
+    border-bottom: none;
+  }
+
+  .navbar-links a.active-link {
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(0, 245, 212, 0.15);
+  }
+
+  .navbar-logout-btn {
+    margin: 20px auto;
+    width: 90%;
+    padding: 14px 24px;
+  }
+}

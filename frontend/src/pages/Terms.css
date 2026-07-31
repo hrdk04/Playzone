@@ -1,0 +1,237 @@
+/* ==========================================================================
+   TYPE: PAGE-SPECIFIC
+   FILE: src/pages/Terms.css
+   APPLIED TO: src/pages/Terms.js
+   PURPOSE: Premium gaming Terms & Conditions page with modern e-sports aesthetics
+   ========================================================================== */
+
+.terms-page-container {
+  min-height: 100vh;
+  color: var(--text-primary);
+  font-family: 'Rajdhani', 'Poppins', sans-serif;
+  padding: 100px 20px 80px;
+  background: var(--bg-primary);
+}
+
+.terms-content {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Header */
+.terms-header {
+  text-align: center;
+  padding: 60px 40px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--accent-cyan);
+  border-radius: 24px;
+  margin-bottom: 50px;
+  box-shadow: var(--glow-cyan);
+  position: relative;
+  overflow: hidden;
+}
+
+.terms-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--gradient-primary);
+}
+
+.terms-badge {
+  display: inline-block;
+  background: rgba(0, 245, 212, 0.15);
+  color: var(--accent-cyan);
+  border: 1px solid var(--accent-cyan);
+  padding: 8px 20px;
+  border-radius: 30px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+}
+
+.terms-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: -1px;
+  line-height: 1.1;
+}
+
+.terms-subtitle {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+/* Section Styles */
+.terms-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 40px;
+  margin-bottom: 30px;
+  box-shadow: var(--card-shadow);
+  transition: var(--hover-transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.terms-section::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--gradient-primary);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.4s ease;
+}
+
+.terms-section:hover {
+  border-color: var(--accent-cyan);
+  transform: translateY(-4px);
+  box-shadow: var(--card-shadow-hover), var(--glow-cyan);
+}
+
+.terms-section:hover::before {
+  transform: scaleY(1);
+}
+
+.section-title {
+  font-family: 'Rajdhani', sans-serif;
+  color: var(--accent-cyan);
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 24px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  padding-left: 20px;
+}
+
+.section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  background: var(--accent-pink);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255, 77, 138, 0.6);
+}
+
+.terms-text {
+  color: var(--text-secondary);
+  line-height: 1.9;
+  font-size: 1.05rem;
+  margin-bottom: 20px;
+}
+
+.terms-text strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.terms-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+
+.terms-list li {
+  position: relative;
+  padding-left: 30px;
+  margin-bottom: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.terms-list li::before {
+  content: '▸';
+  position: absolute;
+  left: 0;
+  color: var(--accent-cyan);
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.terms-list li strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.terms-link {
+  color: var(--accent-cyan);
+  text-decoration: none;
+  font-weight: 700;
+  transition: var(--hover-transition);
+}
+
+.terms-link:hover {
+  color: var(--accent-pink);
+  text-shadow: 0 0 15px rgba(255, 77, 138, 0.5);
+}
+
+/* Footer */
+.terms-footer {
+  text-align: center;
+  padding: 40px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-top: 50px;
+}
+
+.terms-footer span {
+  color: var(--accent-cyan);
+  font-weight: 700;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 768px) {
+  .terms-page-container {
+    padding: 80px 15px 60px;
+  }
+
+  .terms-header {
+    padding: 40px 25px;
+    border-radius: 20px;
+  }
+
+  .terms-title {
+    font-size: 2.2rem;
+  }
+
+  .terms-section {
+    padding: 30px 25px;
+    border-radius: 16px;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+
+  .terms-text {
+    font-size: 1rem;
+  }
+
+  .terms-footer {
+    padding: 30px 20px;
+  }
+}

@@ -260,9 +260,9 @@ const Payment = mongoose.model("payment", paymentSchema)
 // ==========================
 mongoose
   .connect(
-     'mongodb+srv://yk2552005_db_user:aPaJ7RBrI1imHXH1@cluster0.awcnqsc.mongodb.net/PlayzoneDB?appName=Cluster0',
-    // "mongodb+srv://inquisitivewoodpeckermhwz_db_user:Ihatejava123@cluster0.7pmkm4a.mongodb.net/Tournament_DB?retryWrites=true&w=majority&appName=Cluster0",
-    //"mongodb+srv://inquisitivewoodpeckermhwz_db_user:Ihatejava123@cluster0.7pmkm4a.mongodb.net/Tournament_DB?retryWrites=true&w=majority&appName=Cluster0",
+     process.env.MONGO_URL,
+    // "mongodb+srv://inquisitivewoodpeckermhwz_db_user:@cluster0.7pmkm4a.mongodb.net/Tournament_DB?retryWrites=true&w=majority&appName=Cluster0",
+    //"mongodb+srv://inquisitivewoodpeckermhwz_db_user:@cluster0.7pmkm4a.mongodb.net/Tournament_DB?retryWrites=true&w=majority&appName=Cluster0",
   )
   .then(async () => {
     console.log("MongoDB connected successfully")
@@ -835,6 +835,45 @@ app.get("/admin/upcoming-tournaments", async (req, res) => {
     res.status(500).json({ msg: "Server error" })
   }
 })
+
+// Contact Form Submit
+app.post("/contact/submit", async (req, res) => {
+  try {
+    const { name, email, subject, message } = req.body;
+
+    // Basic validation
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Send contact email to support
+    await transporter.sendMail({
+      from: process.env.SMTP_USER,
+      to: process.env.SMTP_USER,
+      replyTo: email,
+      subject: `🎮 Contact Form: ${subject}`,
+      html: `
+        <div style="padding: 30px; max-width: 600px; margin: auto;">
+          <h2 style="color: #00f5d4;">New Contact Form Submission</h2>
+          <hr>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Subject:</strong> ${subject}</p>
+          <br>
+          <h3 style="color: #00f5d4;">Message:</h3>
+          <p style="white-space: pre-wrap; line-height: 1.6;">${message}</p>
+          <hr>
+          <p style="color: #888; font-size: 12px;">Sent from Playzone Contact Form</p>
+        </div>
+      `
+    });
+
+    res.status(200).json({ message: "Message sent successfully! We will get back to you soon." });
+  } catch (error) {
+    console.error("Contact form error:", error);
+    res.status(500).json({ message: "Failed to send message. Please try again." });
+  }
+});
 
 // Update user info
 app.put("/updateUser", async (req, res) => {

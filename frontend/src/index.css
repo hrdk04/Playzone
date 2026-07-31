@@ -1,37 +1,98 @@
+/* ==========================================================================
+   TYPE: COMMON / GLOBAL
+   FILE: src/index.css
+   APPLIED TO: Entire Application (Root)
+   PURPOSE: Light/Dark theme variables, global reset, background, and animations
+   ========================================================================== */
 
-body {
+/* Light Theme Variables (Default) */
+:root {
+  --bg-primary: #f0f2f5;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e8ecf1;
+  --text-primary: #0a0e17;
+  --text-secondary: #4a5568;
+  --text-muted: #718096;
+  
+  --accent-cyan: #00d4aa;
+  --accent-pink: #ff2d7b;
+  --accent-purple: #8b5cf6;
+  --accent-orange: #f97316;
+  --accent-yellow: #fbbf24;
+  --border-color: #e2e8f0;
+  --border-light: #f1f5f9;
+  
+  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --card-shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --glow-cyan: 0 0 20px rgba(0, 212, 170, 0.4);
+  --glow-pink: 0 0 20px rgba(255, 45, 123, 0.4);
+  --hover-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  --skeleton-base: #e2e8f0;
+  --skeleton-shine: #f8fafc;
+  
+  --gradient-primary: linear-gradient(135deg, #00d4aa 0%, #00a3ff 100%);
+  --gradient-secondary: linear-gradient(135deg, #ff2d7b 0%, #8b5cf6 100%);
+  --gradient-dark: linear-gradient(135deg, #1a1f2e 0%, #0a0e17 100%);
+}
+
+/* Dark Theme Variables */
+[data-theme="dark"] {
+  --bg-primary: #05080f;
+  --bg-secondary: #0d1117;
+  --bg-tertiary: #161b22;
+  --text-primary: #f0f6fc;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  
+  --accent-cyan: #00f5d4;
+  --accent-pink: #ff4d8a;
+  --accent-purple: #a78bfa;
+  --accent-orange: #fb923c;
+  --accent-yellow: #facc15;
+  --border-color: #30363d;
+  --border-light: #21262d;
+  
+  --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --card-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.8);
+  --glow-cyan: 0 0 30px rgba(0, 245, 212, 0.5);
+  --glow-pink: 0 0 30px rgba(255, 77, 138, 0.5);
+  
+  --skeleton-base: #21262d;
+  --skeleton-shine: #30363d;
+  
+  --gradient-primary: linear-gradient(135deg, #00f5d4 0%, #00b4ff 100%);
+  --gradient-secondary: linear-gradient(135deg, #ff4d8a 0%, #a78bfa 100%);
+  --gradient-dark: linear-gradient(135deg, #0d1117 0%, #05080f 100%);
+}
+
+/* Global Reset & Base Layout */
+* {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+}
+
+body {
+  font-family: 'Rajdhani', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+  
+  /* Gaming Background */
+  background-color: var(--bg-primary);
+  background-image: 
+    radial-gradient(ellipse at top, rgba(0, 245, 212, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(255, 77, 138, 0.06) 0%, transparent 50%),
+    linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  background-attachment: fixed;
+  
+  color: var(--text-primary);
+  transition: background-color 0.4s ease, color 0.4s ease;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-  min-height: 100vh;
-  width: 100%;
-    background-color: var(--background-color);
-    color: var(--text-color);
-    transition: var(--transition);
 }
 
-html {
-  overflow-x: hidden;
-  width: 100%;
-  scroll-behavior: smooth;
+/* Global Shimmer Animation for Skeleton Loaders */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
-
-/* Loading spinner animation */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-html::-webkit-scrollbar{
-  width: 2px;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
-}
-
