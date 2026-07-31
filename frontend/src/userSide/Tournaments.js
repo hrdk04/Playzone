@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import axios from "axios"
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import UserSideNav from "./UserSideNav"
-import "./Tournaments.css" // ✅ INJECTING THE NEW CSS
+import { SkeletonGrid } from "../components/Skeleton"
+import "./Tournaments.css"
 
 const gameThumbs = {
   bgmi: "https://yourcdn.com/bgmi.jpg",
@@ -15,9 +16,13 @@ const gameThumbs = {
   ff: "https://yourcdn.com/ff.jpg",
 }
 
+const CACHE_KEY = "playzone_tournaments_cache"
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes cache
+
 export default function Tournaments() {
   const navigate = useNavigate()
   const location = useLocation()
+  const abortControllerRef = useRef(null)
 
   const [filter, setFilter] = useState("all")
   const [dateFilter, setDateFilter] = useState("all") 
@@ -26,20 +31,25 @@ export default function Tournaments() {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [selectedTournament, setSelectedTournament] = useState(null)
   const [tournaments, setTournaments] = useState([])
+  const [pageLoading, setPageLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   const [showTeamForm, setShowTeamForm] = useState(false)
   const [teamName, setTeamName] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [registerLoading, setRegisterLoading] = useState(false)
   const [showConfirmPay, setShowConfirmPay] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
 
   const isDashboardView = location.pathname.startsWith("/dashboard")
 
+  // Check login status
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"))
     setIsLoggedIn(!!user)
   }, [])
 
+  // Resume registration flow from redirect
   useEffect(() => {
     if (location.state?.resumeRegister && location.state?.tournament) {
       setSelectedTournament(location.state.tournament)
@@ -55,10 +65,32 @@ export default function Tournaments() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, navigate])
 
+  // Fetch tournaments with caching and abort controller
   useEffect(() => {
-    axios
-      .get("http://localhost:5000/admin/tournaments")
-      .then((res) => {
+    const fetchTournaments = async () => {
+      // Cancel previous request if any
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      abortControllerRef.current = new AbortController()
+
+      // Check cache first
+      const cached = getCachedTournaments()
+      if (cached) {
+        setTournaments(cached)
+        setPageLoading(false)
+        setFetchError(null)
+        return
+      }
+
+      setPageLoading(true)
+      setFetchError(null)
+
+      try {
+        const res = await axios.get("http://localhost:5000/admin/tournaments", {
+          signal: abortControllerRef.current.signal
+        })
+        
         const data = res.data.map((t) => ({
           id: t.t_id,
           game: t.game,
@@ -74,15 +106,57 @@ export default function Tournaments() {
           poolPrize: (t.rewards?.first || 0) + (t.rewards?.second || 0) + (t.rewards?.third || 0),
           thumbnail: t.thumbnail || gameThumbs[t.game] || "",
         }))
+        
         setTournaments(data)
-      })
-      .catch((err) => {
+        setCacheTournaments(data)
+        setFetchError(null)
+      } catch (err) {
+        if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
+          return // Silently ignore cancelled requests
+        }
         console.error("Error fetching tournaments:", err)
+        setFetchError("Failed to load tournaments. Please check your connection.")
         toast.error("Failed to load tournaments")
-      })
-  }, [])
+      } finally {
+        setPageLoading(false)
+      }
+    }
 
-  const getAvailableDates = () => {
+    fetchTournaments()
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [retryCount])
+
+  // Cache helpers
+  const getCachedTournaments = () => {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY))
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
+
+  const setCacheTournaments = (data) => {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }))
+    } catch {
+      // localStorage might be full, silently fail
+    }
+  }
+
+  // Memoized derived data for performance
+  const availableDates = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10)
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
     
@@ -107,9 +181,43 @@ export default function Tournaments() {
       if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder
       return new Date(b.value) - new Date(a.value)
     })
-  }
+  }, [tournaments])
 
-  const handleTournamentClick = (tournament) => {
+  const filtered = useMemo(() => {
+    return tournaments.filter((t) => {
+      let statusMatch = true
+      if (filter === "all") {
+        statusMatch = t.status === "pending" || t.status === "running"
+      } else if (filter === "pending") {
+        statusMatch = t.status === "pending"
+      } else if (filter === "running") {
+        statusMatch = t.status === "running"
+      } else if (filter === "upcoming") {
+        statusMatch = t.status === "pending" || t.status === "running"
+      } else if (filter === "completed") {
+        statusMatch = t.status === "completed"
+      } else {
+        statusMatch = t.status === filter
+      }
+      
+      let dateMatch = true
+      if (dateFilter !== "all") {
+        dateMatch = t.date === dateFilter
+      }
+      
+      return statusMatch && dateMatch
+    })
+  }, [tournaments, filter, dateFilter])
+
+  const { high, mid, low } = useMemo(() => {
+    return {
+      high: filtered.filter((t) => t.poolPrize > 1000),
+      mid: filtered.filter((t) => t.poolPrize <= 1000 && t.poolPrize >= 500),
+      low: filtered.filter((t) => t.poolPrize < 500),
+    }
+  }, [filtered])
+
+  const handleTournamentClick = useCallback((tournament) => {
     if (tournament.status === "completed") {
       if (tournament.result_published) {
         navigate(`/tournaments/results/${tournament.id}`)
@@ -128,7 +236,9 @@ export default function Tournaments() {
       setSelectedTournament(tournament)
       setShowTeamForm(true)
     }
-  }
+  }, [isLoggedIn, navigate])
+
+  const handleBack = useCallback(() => navigate(-1), [navigate])
 
   const handleTeamSave = (e) => {
     e.preventDefault()
@@ -143,7 +253,7 @@ export default function Tournaments() {
   const handlePayAndRegister = async () => {
     if (!selectedTournament) return
     try {
-      setLoading(true)
+      setRegisterLoading(true)
 
       let user = JSON.parse(localStorage.getItem("user"))
       if (!user?._id) {
@@ -210,41 +320,15 @@ export default function Tournaments() {
         autoClose: 4000
       })
     } finally {
-      setLoading(false)
+      setRegisterLoading(false)
     }
   }
 
-  const handleBack = () => navigate(-1)
+  const handleRetry = useCallback(() => {
+    setRetryCount(prev => prev + 1)
+  }, [])
 
-  const filtered = tournaments.filter((t) => {
-    let statusMatch = true
-    if (filter === "all") {
-      statusMatch = t.status === "pending" || t.status === "running"
-    } else if (filter === "pending") {
-      statusMatch = t.status === "pending"
-    } else if (filter === "running") {
-      statusMatch = t.status === "running"
-    } else if (filter === "upcoming") {
-      statusMatch = t.status === "pending" || t.status === "running"
-    } else if (filter === "completed") {
-      statusMatch = t.status === "completed"
-    } else {
-      statusMatch = t.status === filter
-    }
-    
-    let dateMatch = true
-    if (dateFilter !== "all") {
-      dateMatch = t.date === dateFilter
-    }
-    
-    return statusMatch && dateMatch
-  })
-
-  const high = filtered.filter((t) => t.poolPrize > 1000)
-  const mid = filtered.filter((t) => t.poolPrize <= 1000 && t.poolPrize >= 500)
-  const low = filtered.filter((t) => t.poolPrize < 500)
-
-  const renderRow = (list, category) => {
+  const renderRow = useCallback((list, category) => {
     const limit = 4
     const visible = viewAll[category] ? list : list.slice(0, limit)
 
@@ -272,7 +356,7 @@ export default function Tournaments() {
             <div key={t.id} className="tournament-card" onClick={() => handleTournamentClick(t)}>
               
               <div className="tournament-img-wrapper">
-                <img src={t.thumbnail} alt={t.game} className="tournament-img" />
+                <img src={t.thumbnail} alt={t.game} className="tournament-img" loading="lazy" />
                 <div className={`status-badge ${t.status}`}>
                   {t.status.toUpperCase()}
                 </div>
@@ -328,7 +412,7 @@ export default function Tournaments() {
         </div>
       </div>
     )
-  }
+  }, [viewAll, handleTournamentClick, navigate])
 
   return (
     <div className={`tournaments-page-wrapper ${isDashboardView ? 'dashboard-mode' : ''}`}>
@@ -346,72 +430,93 @@ export default function Tournaments() {
       <div className="tournaments-main-content">
         <h1 className="tournaments-page-title">Playzone Arena</h1>
 
-        {/* Main Status Filters (always visible) */}
-        <div className="filter-main-bar">
-                    
-          <div className="filter-row">
-            <div className="filter-btn-group">
-              <button onClick={() => setFilter("all")} className={`filter-btn ${filter === "all" ? "active" : ""}`}>
-                All ({tournaments.length - tournaments.filter(t => t.status === "completed").length})
-              </button>
-              <button onClick={() => setFilter("upcoming")} className={`filter-btn ${filter === "upcoming" ? "active" : ""}`}>
-                Upcoming ({tournaments.filter(t => t.status === "pending" || t.status === "running").length})
-              </button>
-              <button onClick={() => setFilter("running")} className={`filter-btn ${filter === "running" ? "active" : ""}`}>
-                Running ({tournaments.filter(t => t.status === "running").length})
-              </button>
-              <button onClick={() => setFilter("completed")} className={`filter-btn ${filter === "completed" ? "active" : ""}`}>
-                Completed ({tournaments.filter(t => t.status === "completed").length})
-              </button>
-              <button onClick={() => setShowFilters(!showFilters)} className="more-filters-btn">
-                {showFilters ? "✕ Less" : "📅 More Filters"} &nbsp;
-              </button>
-            
+        {/* Show skeleton while loading */}
+        {pageLoading ? (
+          <div className="page-loading-container">
+            <div className="loading-spinner">
+              <div className="spinner-ring"></div>
+              <p>Loading tournaments...</p>
             </div>
-            {/* Date Filter (collapsible) */}
-            {showFilters && (
-              <div className="date-filter-expanded" style={{ margin: "1% auto", textAlign:"center"}}>
-                <label>Filter by Date:</label>
-                <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="date-select">
-                  <option value="all">All Dates ({tournaments.length})</option>
-                  {getAvailableDates().map(({ value, label }) => {
-                    const count = tournaments.filter(t => t.date === value).length
-                    return <option key={value} value={value}>{label} ({count})</option>
-                  })}
-                </select>
-                
-                {dateFilter !== "all" && (
-                  <button onClick={() => setDateFilter("all")} className="clear-date-btn">
-                    ✕ Clear
-                  </button>
-                )}
-              </div>
-            )}
-
-            <div className="filter-count-text">
-              Showing {filtered.length} tournament{filtered.length !== 1 ? 's' : ''} 
-              {filter !== "all" && ` (${filter})`}
-              {dateFilter !== "all" && ` on ${getAvailableDates().find(d => d.value === dateFilter)?.label || dateFilter}`}
-            </div>
+            <SkeletonGrid count={6} />
           </div>
-        </div>
-
-
-
-        {/* Tournament Rendering */}
-        {filtered.length === 0 ? (
+        ) : fetchError ? (
+          /* Error state with retry */
           <div className="empty-arena-state">
-            <h3>No tournaments found</h3>
-            <p>No tournaments match the current filter criteria.</p>
-            <button onClick={() => { setFilter("all"); setDateFilter("all"); }} className="btn-primary-gaming mt-3">
-              Show All Tournaments
+            <div className="error-icon">⚠️</div>
+            <h3>Something went wrong</h3>
+            <p>{fetchError}</p>
+            <button onClick={handleRetry} className="btn-primary-gaming mt-3">
+              🔄 Try Again
             </button>
           </div>
         ) : (
           <>
-            {high.length > 0 && renderRow(high, "high")}
-            {mid.length > 0 && renderRow(mid, "mid")}
-            {low.length > 0 && renderRow(low, "low")}
+            {/* Main Status Filters (always visible) */}
+            <div className="filter-main-bar">
+                        
+              <div className="filter-row">
+                <div className="filter-btn-group">
+                  <button onClick={() => setFilter("all")} className={`filter-btn ${filter === "all" ? "active" : ""}`}>
+                    All ({tournaments.length - tournaments.filter(t => t.status === "completed").length})
+                  </button>
+                  <button onClick={() => setFilter("upcoming")} className={`filter-btn ${filter === "upcoming" ? "active" : ""}`}>
+                    Upcoming ({tournaments.filter(t => t.status === "pending" || t.status === "running").length})
+                  </button>
+                  <button onClick={() => setFilter("running")} className={`filter-btn ${filter === "running" ? "active" : ""}`}>
+                    Running ({tournaments.filter(t => t.status === "running").length})
+                  </button>
+                  <button onClick={() => setFilter("completed")} className={`filter-btn ${filter === "completed" ? "active" : ""}`}>
+                    Completed ({tournaments.filter(t => t.status === "completed").length})
+                  </button>
+                  <button onClick={() => setShowFilters(!showFilters)} className="more-filters-btn">
+                    {showFilters ? "✕ Less" : "📅 More Filters"} &nbsp;
+                  </button>
+                
+                </div>
+                {/* Date Filter (collapsible) */}
+                {showFilters && (
+                  <div className="date-filter-expanded" style={{ margin: "1% auto", textAlign:"center"}}>
+                    <label>Filter by Date:</label>
+                    <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="date-select">
+                      <option value="all">All Dates ({tournaments.length})</option>
+                      {availableDates.map(({ value, label }) => {
+                        const count = tournaments.filter(t => t.date === value).length
+                        return <option key={value} value={value}>{label} ({count})</option>
+                      })}
+                    </select>
+                    
+                    {dateFilter !== "all" && (
+                      <button onClick={() => setDateFilter("all")} className="clear-date-btn">
+                        ✕ Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <div className="filter-count-text">
+                  Showing {filtered.length} tournament{filtered.length !== 1 ? 's' : ''} 
+                  {filter !== "all" && ` (${filter})`}
+                  {dateFilter !== "all" && ` on ${availableDates.find(d => d.value === dateFilter)?.label || dateFilter}`}
+                </div>
+              </div>
+            </div>
+
+            {/* Tournament Rendering */}
+            {filtered.length === 0 ? (
+              <div className="empty-arena-state">
+                <h3>No tournaments found</h3>
+                <p>No tournaments match the current filter criteria.</p>
+                <button onClick={() => { setFilter("all"); setDateFilter("all"); }} className="btn-primary-gaming mt-3">
+                  Show All Tournaments
+                </button>
+              </div>
+            ) : (
+              <>
+                {high.length > 0 && renderRow(high, "high")}
+                {mid.length > 0 && renderRow(mid, "mid")}
+                {low.length > 0 && renderRow(low, "low")}
+              </>
+            )}
           </>
         )}
 
@@ -435,8 +540,8 @@ export default function Tournaments() {
                   className="auth-input mb-3"
                 />
                 <div className="modal-btn-group">
-                  <button type="submit" disabled={loading} className="btn-primary-gaming">
-                    {loading ? "Saving..." : "Save & Continue"}
+                  <button type="submit" disabled={registerLoading} className="btn-primary-gaming">
+                    {registerLoading ? "Saving..." : "Save & Continue"}
                   </button>
                   <button type="button" onClick={() => setShowTeamForm(false)} className="btn-secondary-gaming">
                     Cancel
@@ -460,8 +565,8 @@ export default function Tournaments() {
                 <p><strong>Entry Fee:</strong> <span className="text-pink">₹{selectedTournament.entryFee}</span></p>
               </div>
               <div className="modal-btn-group">
-                <button onClick={handlePayAndRegister} disabled={loading} className="btn-primary-gaming">
-                  {loading ? "Processing..." : "Pay & Join Match"}
+                <button onClick={handlePayAndRegister} disabled={registerLoading} className="btn-primary-gaming">
+                  {registerLoading ? "Processing..." : "Pay & Join Match"}
                 </button>
                 <button onClick={() => setShowConfirmPay(false)} className="btn-secondary-gaming">
                   Cancel
