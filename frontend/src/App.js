@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
 
 // General Pages
 import Home from "./pages/Home";
@@ -16,6 +16,7 @@ import ForgetPassword from "./authPages/ForgetPassword.js";
 // User Pages
 import DashBoard from "./userSide/DashBoard";
 import Tournaments from "./userSide/Tournaments";
+import TournamentDetail from "./userSide/TournamentDetail";
 import History from "./userSide/History";
 import Profile from "./userSide/Profile";
 import PaymentPage from "./userSide/PaymentPage";
@@ -34,6 +35,13 @@ import ChatPopup from "./components/ChatPopup";
 const MainApp = () => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const admin = JSON.parse(localStorage.getItem("admin"));
+    setIsLoggedIn(!!(user || admin));
+  }, [location.pathname]);
 
   // Auto scroll to top on every route change
   useEffect(() => {
@@ -54,15 +62,16 @@ const MainApp = () => {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/contact" element={<Contact />} />
 
-        {/* Auth */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/forget-password" element={<ForgetPassword />} />
+        {/* Auth - redirect to dashboard if already logged in */}
+        <Route path="/login" element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Login />} />
+        <Route path="/signup" element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Signup />} />
+        <Route path="/forget-password" element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <ForgetPassword />} />
 
         {/* User */}
         <Route path="/DashBoard" element={<DashBoard />} />
         <Route path="/dashboard/*" element={<DashBoard />} />
         <Route path="/tournaments" element={<Tournaments />} />
+        <Route path="/tournament/:id" element={<TournamentDetail />} />
         <Route path="/tournaments/results/:id" element={<FinalResults />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/history" element={<History />} />

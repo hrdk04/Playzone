@@ -42,7 +42,20 @@ export default function Login() {
         }
         window.dispatchEvent(new Event("storage"));
         toast.success('Login successful');
-        setTimeout(() => navigate("/dashboard"), 1000);
+        
+        // Check if user was trying to register for a tournament
+        const registerIntent = localStorage.getItem("tournament_register_intent");
+        if (registerIntent) {
+          try {
+            const intent = JSON.parse(registerIntent);
+            localStorage.removeItem("tournament_register_intent");
+            setTimeout(() => navigate(`/tournament/${intent.tournamentId}`), 1000);
+          } catch {
+            setTimeout(() => navigate("/dashboard"), 1000);
+          }
+        } else {
+          setTimeout(() => navigate("/dashboard"), 1000);
+        }
       }
     } catch (error) {
       console.error("Login Error:", error);

@@ -229,14 +229,9 @@ export default function Tournaments() {
       return
     }
     
-    if (!isLoggedIn) {
-      setSelectedTournament(tournament)
-      setShowLoginPrompt(true)
-    } else {
-      setSelectedTournament(tournament)
-      setShowTeamForm(true)
-    }
-  }, [isLoggedIn, navigate])
+    // Navigate to tournament detail page
+    navigate(`/tournament/${tournament.id}`)
+  }, [navigate])
 
   const handleBack = useCallback(() => navigate(-1), [navigate])
 

@@ -32,6 +32,15 @@ export default function Home() {
   const [marqueeThumbnails, setMarqueeThumbnails] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ tournamentsCount: 0, playersCount: 0, activePlayers: 0 });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const admin = JSON.parse(localStorage.getItem("admin"));
+    setIsLoggedIn(!!(user || admin));
+    setUserName(user?.fullName || admin?.name || "");
+  }, []);
 
   useEffect(() => {
     const fetchHomeData = async () => {
@@ -84,24 +93,48 @@ export default function Home() {
     <div className="home-container">
       {/* Premium Hero Section */}
       <header className="home-hero">
-        <span className="hero-badge">
-          <span>⚡</span> Next-Gen E-Sports Platform
-        </span>
-        <h1 className="hero-title">
-          DOMINATE THE <span>ARENA</span>
-        </h1>
-        <p className="hero-subtitle">
-          India's most competitive gaming tournament platform. Battle in BGMI, PUBG, COD & Free Fire. 
-          Register your squad, claim victory, and withdraw real cash prizes instantly.
-        </p>
-        <div className="btn-group">
-          <Link to="/signup" className="btn-primary-gaming">
-            <span>🚀</span> Join the Battle
-          </Link>
-          <Link to="/tournaments" className="btn-secondary-gaming">
-            <span>🎮</span> Browse Tournaments
-          </Link>
-        </div>
+        {isLoggedIn ? (
+          <>
+            <span className="hero-badge">
+              <span>⚡</span> Welcome Back, {userName}!
+            </span>
+            <h1 className="hero-title">
+              READY TO <span>DOMINATE</span>?
+            </h1>
+            <p className="hero-subtitle">
+              Jump back into the arena. Check out the latest tournaments and register your squad.
+            </p>
+            <div className="btn-group">
+              <Link to="/tournaments" className="btn-primary-gaming">
+                <span>🎮</span> Join Tournament
+              </Link>
+              <Link to="/dashboard" className="btn-secondary-gaming">
+                <span>📊</span> Go to Dashboard
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <span className="hero-badge">
+              <span>⚡</span> Next-Gen E-Sports Platform
+            </span>
+            <h1 className="hero-title">
+              DOMINATE THE <span>ARENA</span>
+            </h1>
+            <p className="hero-subtitle">
+              India's most competitive gaming tournament platform. Battle in BGMI, PUBG, COD & Free Fire. 
+              Register your squad, claim victory, and withdraw real cash prizes instantly.
+            </p>
+            <div className="btn-group">
+              <Link to="/signup" className="btn-primary-gaming">
+                <span>🚀</span> Join the Battle
+              </Link>
+              <Link to="/tournaments" className="btn-secondary-gaming">
+                <span>🎮</span> Browse Tournaments
+              </Link>
+            </div>
+          </>
+        )}
       </header>
 
       {/* Live Stats Ticker Bar */}
@@ -153,8 +186,14 @@ export default function Home() {
       {/* Featured Tournaments Section */}
       <section>
         <div className="section-header">
-          <h2 className="section-title">🔥 Featured Tournaments</h2>
-          <p className="section-subtitle">High-stakes battles with massive prize pools. Secure your slot now!</p>
+          <h2 className="section-title">
+            {isLoggedIn ? "🔥 Your Next Battle" : "🔥 Featured Tournaments"}
+          </h2>
+          <p className="section-subtitle">
+            {isLoggedIn 
+              ? "Ready to compete? Register now and show your skills!" 
+              : "High-stakes battles with massive prize pools. Secure your slot now!"}
+          </p>
         </div>
 
         {loading ? (
@@ -197,7 +236,9 @@ export default function Home() {
                 fontSize: "1.2rem"
               }}>
                 <span style={{ fontSize: "3rem", display: "block", marginBottom: "20px" }}>🎮</span>
-                No upcoming tournaments. Check back soon for new battles!
+                {isLoggedIn 
+                  ? "No upcoming tournaments. Check back soon for new battles!" 
+                  : "No upcoming tournaments. Check back soon for new battles!"}
               </div>
             )}
           </div>
@@ -212,53 +253,55 @@ export default function Home() {
         )}
       </section>
 
-      {/* Why Choose Playzone Section */}
-      <section>
-        <div className="section-header">
-          <h2 className="section-title">Why Choose Playzone?</h2>
-          <p className="section-subtitle">Built by competitive gamers, for champions who demand excellence</p>
-        </div>
-        <div className="grid-container">
-          {[
-            { 
-              icon: "🏆", 
-              title: "Pro-Level Tournaments", 
-              desc: "Structured brackets, fair-play enforcement, and automated room ID delivery. No delays, no disputes." 
-            },
-            { 
-              icon: "⚡", 
-              title: "Instant Wallet Payouts", 
-              desc: "Winnings credited automatically to your dashboard within minutes. Zero withdrawal hassles, 24/7 support." 
-            },
-            { 
-              icon: "💬", 
-              title: "Squad Social Hub", 
-              desc: "Connect with fellow gamers, build your team reputation, track rivalries, and find your perfect squad." 
-            },
-            { 
-              icon: "🔒", 
-              title: "Secure & Fair Gaming", 
-              desc: "Anti-cheat measures, verified payments, and transparent tournament results. Your gaming experience, protected." 
-            },
-            { 
-              icon: "📱", 
-              title: "Mobile-First Experience", 
-              desc: "Optimized for mobile gaming. Register, join matches, and track results from anywhere, anytime." 
-            },
-            { 
-              icon: "🎁", 
-              title: "Daily Rewards & Bonuses", 
-              desc: "Earn bonus credits, referral rewards, and special tournament entries. More ways to boost your gaming bankroll." 
-            },
-          ].map((f, i) => (
-            <div key={i} className="feature-card">
-              <div className="card-icon">{f.icon}</div>
-              <h3>{f.title}</h3>
-              <p>{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Why Choose Playzone Section - Only show for guests */}
+      {!isLoggedIn && (
+        <section>
+          <div className="section-header">
+            <h2 className="section-title">Why Choose Playzone?</h2>
+            <p className="section-subtitle">Built by competitive gamers, for champions who demand excellence</p>
+          </div>
+          <div className="grid-container">
+            {[
+              { 
+                icon: "🏆", 
+                title: "Pro-Level Tournaments", 
+                desc: "Structured brackets, fair-play enforcement, and automated room ID delivery. No delays, no disputes." 
+              },
+              { 
+                icon: "⚡", 
+                title: "Instant Wallet Payouts", 
+                desc: "Winnings credited automatically to your dashboard within minutes. Zero withdrawal hassles, 24/7 support." 
+              },
+              { 
+                icon: "💬", 
+                title: "Squad Social Hub", 
+                desc: "Connect with fellow gamers, build your team reputation, track rivalries, and find your perfect squad." 
+              },
+              { 
+                icon: "🔒", 
+                title: "Secure & Fair Gaming", 
+                desc: "Anti-cheat measures, verified payments, and transparent tournament results. Your gaming experience, protected." 
+              },
+              { 
+                icon: "📱", 
+                title: "Mobile-First Experience", 
+                desc: "Optimized for mobile gaming. Register, join matches, and track results from anywhere, anytime." 
+              },
+              { 
+                icon: "🎁", 
+                title: "Daily Rewards & Bonuses", 
+                desc: "Earn bonus credits, referral rewards, and special tournament entries. More ways to boost your gaming bankroll." 
+              },
+            ].map((f, i) => (
+              <div key={i} className="feature-card">
+                <div className="card-icon">{f.icon}</div>
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section style={{ textAlign: "center", padding: "60px 20px" }}>
@@ -271,34 +314,68 @@ export default function Home() {
           margin: "0 auto",
           boxShadow: "var(--glow-cyan)"
         }}>
-          <h2 style={{
-            fontFamily: "'Rajdhani', sans-serif",
-            fontSize: "clamp(2rem, 5vw, 3rem)",
-            fontWeight: 800,
-            color: "var(--text-primary)",
-            marginBottom: "20px",
-            textTransform: "uppercase",
-            letterSpacing: "2px"
-          }}>
-            Ready to <span style={{ color: "var(--accent-cyan)" }}>Dominate</span>?
-          </h2>
-          <p style={{
-            color: "var(--text-secondary)",
-            fontSize: "1.15rem",
-            marginBottom: "30px",
-            lineHeight: "1.7"
-          }}>
-            Join thousands of competitive gamers already battling on Playzone. 
-            Create your free account and start your journey to e-sports glory today.
-          </p>
-          <div className="btn-group" style={{ justifyContent: "center" }}>
-            <Link to="/signup" className="btn-primary-gaming">
-              <span>🎮</span> Start Playing Now
-            </Link>
-            <Link to="/about" className="btn-secondary-gaming">
-              <span>ℹ️</span> Learn More
-            </Link>
-          </div>
+          {isLoggedIn ? (
+            <>
+              <h2 style={{
+                fontFamily: "'Rajdhani', sans-serif",
+                fontSize: "clamp(2rem, 5vw, 3rem)",
+                fontWeight: 800,
+                color: "var(--text-primary)",
+                marginBottom: "20px",
+                textTransform: "uppercase",
+                letterSpacing: "2px"
+              }}>
+                Ready to <span style={{ color: "var(--accent-cyan)" }}>Compete</span>?
+              </h2>
+              <p style={{
+                color: "var(--text-secondary)",
+                fontSize: "1.15rem",
+                marginBottom: "30px",
+                lineHeight: "1.7"
+              }}>
+                Jump into the arena and showcase your skills. New tournaments are waiting for you!
+              </p>
+              <div className="btn-group" style={{ justifyContent: "center" }}>
+                <Link to="/tournaments" className="btn-primary-gaming">
+                  <span>🎮</span> View Tournaments
+                </Link>
+                <Link to="/dashboard" className="btn-secondary-gaming">
+                  <span>📊</span> Dashboard
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 style={{
+                fontFamily: "'Rajdhani', sans-serif",
+                fontSize: "clamp(2rem, 5vw, 3rem)",
+                fontWeight: 800,
+                color: "var(--text-primary)",
+                marginBottom: "20px",
+                textTransform: "uppercase",
+                letterSpacing: "2px"
+              }}>
+                Ready to <span style={{ color: "var(--accent-cyan)" }}>Dominate</span>?
+              </h2>
+              <p style={{
+                color: "var(--text-secondary)",
+                fontSize: "1.15rem",
+                marginBottom: "30px",
+                lineHeight: "1.7"
+              }}>
+                Join thousands of competitive gamers already battling on Playzone. 
+                Create your free account and start your journey to e-sports glory today.
+              </p>
+              <div className="btn-group" style={{ justifyContent: "center" }}>
+                <Link to="/signup" className="btn-primary-gaming">
+                  <span>🎮</span> Start Playing Now
+                </Link>
+                <Link to="/about" className="btn-secondary-gaming">
+                  <span>ℹ️</span> Learn More
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </section>
     </div>
