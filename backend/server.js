@@ -111,42 +111,74 @@ io.on("connection", (socket) => {
   // Join user's personal room
   socket.join(`user:${socket.userId}`);
 
-  // Send message
-  socket.on("sendMessage", async (data) => {
+  // Send message - persisted to DB with sender info
+  socket.on("sendMessage", async (data, ack) => {
     try {
       const { receiverId, content } = data;
 
       // Validate message content
       if (!content || content.trim().length === 0) {
+        if (ack) ack({ ok: false, error: "Message content cannot be empty" });
         return socket.emit("error", { message: "Message content cannot be empty" });
       }
 
       if (content.length > 1000) {
+        if (ack) ack({ ok: false, error: "Message too long" });
         return socket.emit("error", { message: "Message too long" });
       }
 
-      // Create message (you'll need to create a Message model)
-      const message = {
+      // Validate receiver exists
+      const receiver = await User.findById(receiverId);
+      if (!receiver) {
+        if (ack) ack({ ok: false, error: "Receiver not found" });
+        return socket.emit("error", { message: "Receiver not found" });
+      }
+
+      // Persist message to database
+      const newMessage = new Message({
         sender: socket.userId,
         receiver: receiverId,
         content: content.trim(),
-        createdAt: new Date(),
+        read: false,
+      });
+      await newMessage.save();
+
+      // Build payload with populated sender info
+      const messagePayload = {
+        _id: newMessage._id,
+        sender: {
+          _id: socket.userId,
+          username: socket.user.username,
+          fullName: socket.user.fullName,
+        },
+        receiver: {
+          _id: receiverId,
+          username: receiver.username,
+          fullName: receiver.fullName,
+        },
+        content: newMessage.content,
+        read: false,
+        createdAt: newMessage.createdAt,
       };
 
       // Send to sender
-      socket.emit("receiveMessage", message);
+      socket.emit("receiveMessage", messagePayload);
 
       // Send to receiver if online
       const receiverSocketId = userSockets.get(receiverId);
       if (receiverSocketId) {
-        io.to(receiverSocketId).emit("receiveMessage", message);
+        io.to(receiverSocketId).emit("receiveMessage", messagePayload);
       }
 
-      // Emit to both users' personal rooms for real-time updates
-      io.to(`user:${socket.userId}`).emit("messageSent", message);
-      io.to(`user:${receiverId}`).emit("messageReceived", message);
+      // Emit to both users' personal rooms
+      io.to(`user:${socket.userId}`).emit("messageSent", { ok: true, message: messagePayload });
+      io.to(`user:${receiverId}`).emit("messageReceived", { ok: true, message: messagePayload });
+
+      // Fire ack callback so frontend knows it succeeded
+      if (ack) ack({ ok: true, message: messagePayload });
     } catch (error) {
       console.error("Error sending message:", error);
+      if (ack) ack({ ok: false, error: "Failed to send message" });
       socket.emit("error", { message: "Failed to send message" });
     }
   });
@@ -254,6 +286,19 @@ const paymentSchema = new mongoose.Schema(
 )
 
 const Payment = mongoose.model("payment", paymentSchema)
+
+// MESSAGE MODEL
+const messageSchema = new mongoose.Schema(
+  {
+    sender: { type: mongoose.Schema.Types.ObjectId, ref: "user_master", required: true },
+    receiver: { type: mongoose.Schema.Types.ObjectId, ref: "user_master", required: true },
+    content: { type: String, required: true, trim: true, maxlength: 1000 },
+    read: { type: Boolean, default: false },
+  },
+  { timestamps: true },
+)
+
+const Message = mongoose.model("message", messageSchema)
 
 // ==========================
 //  DATABASE CONNECTION
@@ -608,6 +653,100 @@ app.post("/api/follow/unfollow", auth, async (req, res) => {
 
     res.json({ message: "Unfollowed successfully" });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get conversations (users you have chatted with + last message)
+app.get("/api/conversations", auth, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Find all messages involving this user
+    const messages = await Message.find({
+      $or: [{ sender: userId }, { receiver: userId }]
+    }).sort({ createdAt: -1 }).limit(200);
+
+    // Group by other user
+    const convMap = new Map();
+    messages.forEach(msg => {
+      const otherId = msg.sender.toString() === userId.toString() ? msg.receiver.toString() : msg.sender.toString();
+      if (!convMap.has(otherId)) {
+        convMap.set(otherId, { lastMessage: msg, unread: 0 });
+      }
+    });
+
+    // Populate other user info
+    const conversations = [];
+    for (const [otherId, data] of convMap.entries()) {
+      const otherUser = await User.findById(otherId, 'username fullName email');
+      if (!otherUser) continue;
+      conversations.push({
+        user: {
+          id: otherUser._id,
+          username: otherUser.username,
+          firstName: otherUser.firstName || otherUser.fullName?.split(' ')[0] || otherUser.username,
+          lastName: otherUser.lastName || otherUser.fullName?.split(' ').slice(1).join(' ') || '',
+        },
+        lastMessage: {
+          content: data.lastMessage.content,
+          isSender: data.lastMessage.sender.toString() === userId.toString(),
+          time: data.lastMessage.createdAt,
+        },
+        unread: 0,
+      });
+    }
+
+    res.json(conversations);
+  } catch (error) {
+    console.error("Error fetching conversations:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get message history with a specific user
+app.get("/api/messages/:userId", auth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user._id;
+
+    const messages = await Message.find({
+      $or: [
+        { sender: currentUserId, receiver: userId },
+        { sender: userId, receiver: currentUserId },
+      ]
+    })
+    .sort({ createdAt: 1 })
+    .limit(200)
+    .populate('sender', 'username fullName')
+    .populate('receiver', 'username fullName');
+
+    // Mark messages as read
+    await Message.updateMany(
+      { sender: userId, receiver: currentUserId, read: false },
+      { $set: { read: true } }
+    );
+
+    const payload = messages.map(m => ({
+      _id: m._id,
+      sender: {
+        _id: m.sender._id,
+        username: m.sender.username,
+        fullName: m.sender.fullName,
+      },
+      receiver: {
+        _id: m.receiver._id,
+        username: m.receiver.username,
+        fullName: m.receiver.fullName,
+      },
+      content: m.content,
+      read: m.read,
+      createdAt: m.createdAt,
+    }));
+
+    res.json(payload);
+  } catch (error) {
+    console.error("Error fetching messages:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -1953,10 +2092,23 @@ app.get("/admin/tournaments/withParticipants", async (req, res) => {
 
 app.get("/admin/tournaments/:id", async (req, res) => {
   try {
-    const tournament = await Tournament.findOne({ t_id: req.params.id }).populate(
-      "participants.user_id",
-      "username fullName email",
-    )
+    const { id } = req.params
+    let tournament
+
+    // Check if id is a MongoDB ObjectId (24 hex chars)
+    if (/^[0-9a-fA-F]{24}$/.test(id)) {
+      tournament = await Tournament.findById(id).populate(
+        "participants.user_id",
+        "username fullName email",
+      )
+    } else {
+      // Fallback to t_id lookup (e.g. T1234)
+      tournament = await Tournament.findOne({ t_id: id }).populate(
+        "participants.user_id",
+        "username fullName email",
+      )
+    }
+
     if (!tournament) return res.status(404).json({ msg: "Tournament not found" })
     res.json(tournament)
   } catch (error) {
