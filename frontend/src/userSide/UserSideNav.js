@@ -47,9 +47,14 @@ const UserSideNav = () => {
   // Secure logout handler for mobile
   const handleLogout = () => {
     localStorage.removeItem('user');
+    localStorage.removeItem('admin');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('adminName');
     localStorage.removeItem('token');
     localStorage.removeItem('chatToken');
-    navigate('/login');
+    // Dispatch storage event so Navbar and other components update their login state
+    window.dispatchEvent(new Event('storage'));
+    navigate('/');
   };
 
   return (
