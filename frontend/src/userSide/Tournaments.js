@@ -34,6 +34,7 @@ export default function Tournaments() {
   const [pageLoading, setPageLoading] = useState(true)
   const [fetchError, setFetchError] = useState(null)
   const [retryCount, setRetryCount] = useState(0)
+  const [highlightId, setHighlightId] = useState(null)
 
   const [showTeamForm, setShowTeamForm] = useState(false)
   const [teamName, setTeamName] = useState("")
@@ -48,6 +49,25 @@ export default function Tournaments() {
     const user = JSON.parse(localStorage.getItem("user"))
     setIsLoggedIn(!!user)
   }, [])
+
+  // Handle highlight from home page navigation
+  useEffect(() => {
+    if (location.state?.highlightId) {
+      setHighlightId(location.state.highlightId)
+      // Clear state after using it
+      navigate(location.pathname + location.search, { replace: true, state: {} })
+      
+      // Scroll to highlighted tournament after a short delay
+      setTimeout(() => {
+        const element = document.getElementById(`tournament-${location.state.highlightId}`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          // Remove highlight after 4 seconds (matching 5-blink animation)
+          setTimeout(() => setHighlightId(null), 4000)
+        }
+      }, 500)
+    }
+  }, [location.state, navigate])
 
   // Resume registration flow from redirect
   useEffect(() => {
@@ -347,67 +367,74 @@ export default function Tournaments() {
         </div>
 
         <div className={`grid-container ${viewAll[category] ? 'expanded' : ''}`}>
-          {visible.map((t) => (
-            <div key={t.id} className="tournament-card" onClick={() => handleTournamentClick(t)}>
-              
-              <div className="tournament-img-wrapper">
-                <img src={t.thumbnail} alt={t.game} className="tournament-img" loading="lazy" />
-                <div className={`status-badge ${t.status}`}>
-                  {t.status.toUpperCase()}
+          {visible.map((t) => {
+            const isHighlighted = highlightId === t.id
+            return (
+              <div 
+                key={t.id} 
+                id={`tournament-${t.id}`}
+                className={`tournament-card ${isHighlighted ? 'tournament-highlighted' : ''}`}
+                onClick={() => handleTournamentClick(t)}
+              >
+                <div className="tournament-img-wrapper">
+                  <img src={t.thumbnail} alt={t.game} className="tournament-img" loading="lazy" />
+                  <div className={`status-badge ${t.status}`}>
+                    {t.status.toUpperCase()}
+                  </div>
                 </div>
-              </div>
 
-              <div className="tournament-info">
-                <h3>{t.id}</h3>
-                <p>🎮 {t.game}</p>
-                <p>🗺️ Map: {t.map}</p>
-                <p>📅 {t.date} • {parseInt(t.time) >= 12 ? `${t.time} PM` : `${t.time} AM`}</p>
+                <div className="tournament-info">
+                  <h3>{t.id}</h3>
+                  <p>🎮 {t.game}</p>
+                  <p>🗺️ Map: {t.map}</p>
+                  <p>📅 {t.date} • {parseInt(t.time) >= 12 ? `${t.time} PM` : `${t.time} AM`}</p>
+                  
+                  <div className="tournament-prizes">
+                    <span className="prize-entry">Entry: ₹{t.entryFee}</span>
+                    <span className="prize-pool">Pool: ₹{t.poolPrize}</span>
+                  </div>
+
+                  {t.status === "completed" && t.result_published && (
+                    <div className="results-published-tag">
+                      🏆 Results Published
+                    </div>
+                  )}
+                </div>
                 
-                <div className="tournament-prizes">
-                  <span className="prize-entry">Entry: ₹{t.entryFee}</span>
-                  <span className="prize-pool">Pool: ₹{t.poolPrize}</span>
-                </div>
-
-                {t.status === "completed" && t.result_published && (
-                  <div className="results-published-tag">
-                    🏆 Results Published
+                {/* Completed Overlay */}
+                {t.status === "completed" && (
+                  <div 
+                    className="completed-overlay"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (t.result_published) {
+                        navigate(`/tournaments/results/${t.id}`)
+                      } else {
+                        toast.info("Tournament completed but results are not yet published. Please check back later.")
+                      }
+                    }}
+                  >
+                    {t.result_published ? "🏆 View Results" : "⏳ Results Pending"}
                   </div>
                 )}
-              </div>
-              
-              {/* Completed Overlay */}
-              {t.status === "completed" && (
-                <div 
-                  className="completed-overlay"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (t.result_published) {
-                      navigate(`/tournaments/results/${t.id}`)
-                    } else {
-                      toast.info("Tournament completed but results are not yet published. Please check back later.")
-                    }
-                  }}
-                >
-                  {t.result_published ? "🏆 View Results" : "⏳ Results Pending"}
-                </div>
-              )}
-              
-              {/* Hover Prize Reveal (Hidden if completed) */}
-              {t.status !== "completed" && (
-                <div className="prize-hover-reveal">
-                  <p className="hover-pool">🏆 Pool: ₹{t.poolPrize}</p>
-                  <p>🥇 1st: {t.reward_1}</p>
-                  <p>🥈 2nd: {t.reward_2}</p>
-                  <p>🥉 3rd: {t.reward_3}</p>
-                </div>
-              )}
+                
+                {/* Hover Prize Reveal (Hidden if completed) */}
+                {t.status !== "completed" && (
+                  <div className="prize-hover-reveal">
+                    <p className="hover-pool">🏆 Pool: ₹{t.poolPrize}</p>
+                    <p>🥇 1st: {t.reward_1}</p>
+                    <p>🥈 2nd: {t.reward_2}</p>
+                    <p>🥉 3rd: {t.reward_3}</p>
+                  </div>
+                )}
 
-            </div>
-          ))}
+              </div>
+            )
+          })}
         </div>
       </div>
     )
-  }, [viewAll, handleTournamentClick, navigate])
+  }, [viewAll, handleTournamentClick, navigate, highlightId])
 
   return (
     <div className={`tournaments-page-wrapper ${isDashboardView ? 'dashboard-mode' : ''}`}>
