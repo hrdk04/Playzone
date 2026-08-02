@@ -201,7 +201,12 @@ export default function Home() {
         ) : (
           <div className="grid-container">
             {featuredTournaments.length > 0 ? featuredTournaments.map((t) => (
-              <div key={t._id} className="tournament-card" onClick={() => navigate("/tournaments")}>
+              <div 
+                key={t._id} 
+                className="tournament-card" 
+                onClick={() => navigate("/tournaments", { state: { highlightId: t.t_id } })}
+                title={`View ${t.t_id} in tournaments list`}
+              >
                 <div className="tournament-img-wrapper">
                   <img
                     src={t.thumbnail || getGameThumbnail(t.game)}
