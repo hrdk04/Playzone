@@ -367,3 +367,68 @@
     padding: 25px 20px;
   }
 }
+
+/* Light Mode Overrides */
+[data-theme="light"] .floating-back-btn {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #d1d5db;
+}
+
+[data-theme="light"] .profile-main-title {
+  color: #0ea5e9;
+  text-shadow: 0 0 15px rgba(14, 165, 233, 0.3);
+}
+
+[data-theme="light"] .profile-sidebar-card,
+[data-theme="light"] .profile-form-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .avatar-name {
+  color: #0f172a;
+}
+
+[data-theme="light"] .wallet-balance-box {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .stats-header-title {
+  color: #0f172a;
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .stat-item-box {
+  background: #f8fafc;
+}
+
+[data-theme="light"] .form-header-row {
+  border-bottom-color: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .form-main-heading {
+  color: #0f172a;
+}
+
+[data-theme="light"] .profile-input {
+  background: #ffffff;
+  border-color: #d1d5db;
+  color: #0f172a;
+}
+
+[data-theme="light"] .profile-input.disabled {
+  background: #f1f5f9;
+}
+
+[data-theme="light"] .profile-input.strictly-disabled {
+  background: #f8fafc;
+}
+
+[data-theme="light"] .profile-input.editable {
+  background: #ffffff;
+  border-color: #22c55e;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+}
