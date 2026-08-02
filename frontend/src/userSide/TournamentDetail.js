@@ -69,7 +69,9 @@ export default function TournamentDetail() {
       setLoading(true)
       setError(null)
       try {
+        console.log(`Fetching tournament with ID: ${id}`)
         const res = await axios.get(`http://localhost:5000/admin/tournaments/${id}`)
+        console.log("Tournament data received:", res.data)
         setTournament(res.data)
         // Cache it
         localStorage.setItem(cacheKey, JSON.stringify({
@@ -78,7 +80,11 @@ export default function TournamentDetail() {
         }))
       } catch (err) {
         console.error("Error fetching tournament:", err)
-        setError("Failed to load tournament details. Please try again.")
+        if (err.response?.status === 404) {
+          setError("Tournament not found. It may have been removed or doesn't exist.")
+        } else {
+          setError("Failed to load tournament details. Please check your connection and try again.")
+        }
       } finally {
         setLoading(false)
       }
