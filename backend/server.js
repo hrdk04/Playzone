@@ -382,6 +382,17 @@ const auth = async (req, res, next) => {
   }
 };
 
+app.get("/health", async (req, res) => {
+  try {
+    // optional: check DB (mongoose)
+    const dbOk = (mongoose && mongoose.connection && mongoose.connection.readyState === 1);
+    if (!dbOk) return res.status(500).json({ status: "fail", db: "disconnected" });
+    res.json({ status: "ok" });
+  } catch (err) {
+    res.status(500).json({ status: "fail" });
+  }
+});
+
 // Get current user for chat
 app.get("/api/auth/me", auth, async (req, res) => {
   try {
