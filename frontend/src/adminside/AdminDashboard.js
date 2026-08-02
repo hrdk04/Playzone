@@ -18,6 +18,7 @@ import {
 import useSWR from "swr";
 import axios from "axios";
 import AdminBroadcasting from "./components/AdminBroadcasting";
+import API_BASE_URL from "../config/apiConfig";
 
 const fetcher = (url) => axios.get(url).then((r) => r.data);
 
@@ -35,7 +36,7 @@ export default function AdminDashboard({ isMobile = false }) {
   const [selectedSuggestions, setSelectedSuggestions] = useState({});
   const [isProcessingSuggestions, setIsProcessingSuggestions] = useState(false);
 
-  const { data: dashData, isLoading } = useSWR("http://localhost:5000/admin/dashboard", fetcher);
+  const { data: dashData, isLoading } = useSWR(`${API_BASE_URL}/admin/dashboard`, fetcher);
 
   // ------------------------------
   // Dashboard Data
@@ -58,7 +59,7 @@ export default function AdminDashboard({ isMobile = false }) {
 
     const fetchAiTips = async () => {
       try {
-        const { data } = await axios.get("http://localhost:5000/admin/ai-insights");
+        const { data } = await axios.get(`${API_BASE_URL}/admin/ai-insights`);
         setAiTips((data.suggestions || []).filter(tip => ["warning", "info", "success"].includes(tip.type)));
       } catch (err) {
         console.error(err);
@@ -82,7 +83,7 @@ export default function AdminDashboard({ isMobile = false }) {
   useEffect(() => {
     const fetchLiveNotifications = async () => {
       try {
-        const { data } = await axios.get("http://localhost:5000/admin/live-notifications");
+        const { data } = await axios.get(`${API_BASE_URL}/admin/live-notifications`);
         const filtered = (data.notifications || []).filter(n => ["critical", "warning", "info"].includes(n.type));
         setLiveNotifications(filtered);
 
@@ -112,7 +113,7 @@ export default function AdminDashboard({ isMobile = false }) {
   useEffect(() => {
     const fetchUpcoming = async () => {
       try {
-        const { data: tournaments } = await axios.get("http://localhost:5000/admin/upcoming-tournaments");
+        const { data: tournaments } = await axios.get(`${API_BASE_URL}/admin/upcoming-tournaments`);
         setUpcomingTournaments(tournaments.length);
       } catch (err) {
         console.error(err);
@@ -149,7 +150,7 @@ export default function AdminDashboard({ isMobile = false }) {
         return;
       }
 
-      const { data } = await axios.post("http://localhost:5000/admin/suggestion-action", {
+      const { data } = await axios.post(`${API_BASE_URL}/admin/suggestion-action`, {
         action: suggestion.action,
         options: selectedOptions,
         adminUsername: localStorage.getItem("adminUsername") || "admin"

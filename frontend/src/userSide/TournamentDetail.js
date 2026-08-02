@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom"
 import axios from "axios"
 import { toast } from 'react-toastify'
 import "./TournamentDetail.css"
+import API_BASE_URL from "../config/apiConfig";
 
 const CACHE_KEY = "playzone_tournament_detail_cache"
 const CACHE_DURATION = 3 * 60 * 1000 // 3 minutes
@@ -29,7 +30,7 @@ export default function TournamentDetail() {
     setIsLoggedIn(!!user)
     const userName = localStorage.getItem("userName")
     if (userName) {
-      axios.get(`http://localhost:5000/user/${userName}`)
+      axios.get(`${API_BASE_URL}/user/${userName}`)
         .then(res => setUserData(res.data))
         .catch(() => {})
     }
@@ -70,7 +71,7 @@ export default function TournamentDetail() {
       setError(null)
       try {
         console.log(`Fetching tournament with ID: ${id}`)
-        const res = await axios.get(`http://localhost:5000/admin/tournaments/${id}`)
+        const res = await axios.get(`${API_BASE_URL}/admin/tournaments/${id}`)
         console.log("Tournament data received:", res.data)
         setTournament(res.data)
         // Cache it
@@ -168,7 +169,7 @@ export default function TournamentDetail() {
       if (!user?._id) {
         const userName = localStorage.getItem("userName")
         if (userName) {
-          const res = await axios.get(`http://localhost:5000/user/${encodeURIComponent(userName)}`)
+          const res = await axios.get(`${API_BASE_URL}/user/${encodeURIComponent(userName)}`)
           user = res.data
         }
       }
@@ -178,7 +179,7 @@ export default function TournamentDetail() {
         return
       }
 
-      const userRes = await axios.get(`http://localhost:5000/user/id/${user._id}`)
+      const userRes = await axios.get(`${API_BASE_URL}/user/id/${user._id}`)
       const balance = Number(userRes.data?.amount || 0)
       const fee = Number(tournament.entry_fee || 0)
 
@@ -205,20 +206,20 @@ export default function TournamentDetail() {
         team_name: teamName,
         payment_method: "wallet",
       }
-      const reg = await axios.post("http://localhost:5000/tournament/register", payload)
+      const reg = await axios.post(`${API_BASE_URL}/tournament/register`, payload)
       toast.success(reg.data?.message || "Registered successfully! 🎉", {
         autoClose: 3000
       })
       
       try {
-        const refreshed = await axios.get(`http://localhost:5000/user/id/${user._id}`)
+        const refreshed = await axios.get(`${API_BASE_URL}/user/id/${user._id}`)
         localStorage.setItem("user", JSON.stringify(refreshed.data))
       } catch {}
       
       setShowConfirmPay(false)
       setTeamName("")
       // Refresh tournament data
-      const res = await axios.get(`http://localhost:5000/admin/tournaments/${id}`)
+      const res = await axios.get(`${API_BASE_URL}/admin/tournaments/${id}`)
       setTournament(res.data)
     } catch (err) {
       toast.error(err?.response?.data?.message || "Registration failed. Please try again.")

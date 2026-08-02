@@ -8,6 +8,7 @@ import 'react-toastify/dist/ReactToastify.css'
 import UserSideNav from "./UserSideNav"
 import { SkeletonGrid } from "../components/Skeleton"
 import "./Tournaments.css"
+import API_BASE_URL from "../config/apiConfig";
 
 const gameThumbs = {
   bgmi: "https://yourcdn.com/bgmi.jpg",
@@ -107,7 +108,7 @@ export default function Tournaments() {
       setFetchError(null)
 
       try {
-        const res = await axios.get("http://localhost:5000/admin/tournaments", {
+        const res = await axios.get(`${API_BASE_URL}/admin/tournaments`, {
           signal: abortControllerRef.current.signal
         })
         
@@ -274,7 +275,7 @@ export default function Tournaments() {
       if (!user?._id) {
         const userName = localStorage.getItem("userName")
         if (userName) {
-          const res = await axios.get(`http://localhost:5000/user/${encodeURIComponent(userName)}`)
+          const res = await axios.get(`${API_BASE_URL}/user/${encodeURIComponent(userName)}`)
           user = res.data
         }
       }
@@ -284,7 +285,7 @@ export default function Tournaments() {
         return
       }
 
-      const userRes = await axios.get(`http://localhost:5000/user/id/${user._id}`)
+      const userRes = await axios.get(`${API_BASE_URL}/user/id/${user._id}`)
       const balance = Number(userRes.data?.amount || 0)
       const fee = Number(selectedTournament.entryFee || 0)
 
@@ -313,14 +314,14 @@ export default function Tournaments() {
         payment_method: "wallet",
       }
       
-      const reg = await axios.post("http://localhost:5000/tournament/register", payload)
+      const reg = await axios.post(`${API_BASE_URL}/tournament/register`, payload)
       
       toast.success(reg.data?.message || "Registered successfully! 🎉", {
         autoClose: 3000
       })
 
       try {
-        const refreshed = await axios.get(`http://localhost:5000/user/id/${user._id}`)
+        const refreshed = await axios.get(`${API_BASE_URL}/user/id/${user._id}`)
         localStorage.setItem("user", JSON.stringify(refreshed.data))
       } catch (e) {
         console.log("[v0] User refresh after register failed, will still proceed:", e?.message)

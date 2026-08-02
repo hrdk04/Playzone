@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import theme from '../theme';
 import io from 'socket.io-client';
+import API_BASE_URL from "../config/apiConfig";
 
 const ChatPopup = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,7 +25,7 @@ const ChatPopup = () => {
   useEffect(() => {
     if (user && token) {
       // Initialize socket connection
-      const newSocket = io('http://localhost:5000', {
+      const newSocket = io(API_BASE_URL, {
         auth: { token },
         transports: ['websocket', 'polling']
       });

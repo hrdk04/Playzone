@@ -7,6 +7,7 @@ import theme from "../theme"
 // import useSWR, { useSWRConfig } from "swr"
 import useSWR from "swr"
 import FullscreenImageModal from "./components/FullscreenImageModal"
+import API_BASE_URL from "../config/apiConfig";
 
 const gameThumbs = {
   bgmi: "/bgmi-tournament-thumbnail.jpg",
@@ -118,11 +119,11 @@ const AdminTournaments = ({ isMobile = false }) => {
   const [selectedImageUrl, setSelectedImageUrl] = useState("")
   const [selectedTournamentName, setSelectedTournamentName] = useState("")
 
-  const { data, isLoading, mutate } = useSWR("http://localhost:5000/admin/tournaments", (url) =>
+  const { data, isLoading, mutate } = useSWR(`${API_BASE_URL}/admin/tournaments`, (url) =>
     axios.get(url).then((res) => res.data),
   )
 
-  const { data: withParts } = useSWR("http://localhost:5000/admin/tournaments/withParticipants", (url) =>
+  const { data: withParts } = useSWR(`${API_BASE_URL}/admin/tournaments/withParticipants`, (url) =>
     axios.get(url).then((res) => res.data),
   )
 
@@ -141,7 +142,7 @@ const AdminTournaments = ({ isMobile = false }) => {
   const handleAdd = () => navigate("/admin/tournaments/new")
   const handleStart = async (tid) => {
     try {
-      const res = await axios.get(`http://localhost:5000/admin/tournaments/${tid}`)
+      const res = await axios.get(`${API_BASE_URL}/admin/tournaments/${tid}`)
       setSelectedTournament({
         id: tid,
         name: res.data.name,
@@ -163,7 +164,7 @@ const AdminTournaments = ({ isMobile = false }) => {
   const handleDelete = async (tid) => {
     if (!window.confirm("Delete this tournament?")) return
     try {
-      await axios.delete(`http://localhost:5000/admin/tournaments/${tid}`)
+      await axios.delete(`${API_BASE_URL}/admin/tournaments/${tid}`)
       mutate((current) => (current || []).filter((x) => (x.id || x.t_id || x._id) !== tid), false)
     } catch (e) {
       console.error("[v0] Delete failed:", e)
@@ -177,7 +178,7 @@ const AdminTournaments = ({ isMobile = false }) => {
 
   const handleViewResultImage = (imagePath, tournamentName) => {
     if (imagePath) {
-      setSelectedImageUrl(`http://localhost:5000/${imagePath}`)
+      setSelectedImageUrl(`${API_BASE_URL}/${imagePath}`)
       setSelectedTournamentName(tournamentName)
       setShowImageModal(true)
     }
@@ -188,7 +189,7 @@ const AdminTournaments = ({ isMobile = false }) => {
     try {
       setSendStatuses((s) => ({ ...s, [email]: "pending" }))
       const res = await axios.post(
-        `http://localhost:5000/admin/tournaments/${selectedTournament.id}/send-credentials`,
+        `${API_BASE_URL}/admin/tournaments/${selectedTournament.id}/send-credentials`,
         {
           roomId,
           roomPass,

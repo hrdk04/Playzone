@@ -5,6 +5,7 @@ import UserSideNav from "./UserSideNav"
 import axios from "axios"
 import { useLocation, useNavigate } from "react-router-dom"
 import "./PaymentPage.css"
+import API_BASE_URL from "../config/apiConfig";
 
 export default function PaymentPage() {
   const [user, setUser] = useState(null)
@@ -25,13 +26,13 @@ export default function PaymentPage() {
       try {
         const localUser = JSON.parse(localStorage.getItem("user"))
         if (localUser?._id) {
-          const u = await axios.get(`http://localhost:5000/user/id/${localUser._id}`)
+          const u = await axios.get(`${API_BASE_URL}/user/id/${localUser._id}`)
           setUser(u.data)
           await loadHistory(u.data._id)
           return
         }
         if (emailOrUsername) {
-          const u = await axios.get(`http://localhost:5000/user/${emailOrUsername}`)
+          const u = await axios.get(`${API_BASE_URL}/user/${emailOrUsername}`)
           setUser(u.data)
           await loadHistory(u.data._id)
         }
@@ -55,7 +56,7 @@ export default function PaymentPage() {
     if (!userId) return
     setLoadingHistory(true)
     try {
-      const res = await axios.get(`http://localhost:5000/payment/history/${userId}`)
+      const res = await axios.get(`${API_BASE_URL}/payment/history/${userId}`)
       const sorted = res.data.sort((a, b) => new Date(b.p_date) - new Date(a.p_date))
       setHistory(sorted.slice(0, 20))
     } catch (err) {
@@ -90,8 +91,8 @@ export default function PaymentPage() {
         }
 
         const url = modalType === "deposit"
-            ? "http://localhost:5000/payment/deposit"
-            : "http://localhost:5000/payment/withdraw"
+            ? `${API_BASE_URL}/payment/deposit`
+            : `${API_BASE_URL}/payment/withdraw`
 
         const res = await axios.post(url, payload)
         const newBalance = res.data.balance

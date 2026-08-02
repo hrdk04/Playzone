@@ -1,6 +1,7 @@
 "use client"
 import { useState, useRef, useEffect } from "react"
 import theme from "../../theme"
+import API_BASE_URL from "../../config/apiConfig";
 
 const ResultImageGenerator = ({ tournament, winners, onClose, uploadedImagePath }) => {
   const canvasRef = useRef(null)
@@ -23,7 +24,7 @@ const ResultImageGenerator = ({ tournament, winners, onClose, uploadedImagePath 
       let filename = `tournament_${tournament.t_id}_results.png`
 
       if (imageUrl.startsWith("/")) {
-        const response = await fetch(`http://localhost:5000${imageUrl}`)
+        const response = await fetch(`${API_BASE_URL}${imageUrl}`)
         const blob = await response.blob()
         downloadUrl = URL.createObjectURL(blob)
         filename = `tournament_${tournament.t_id}_uploaded_results.png`
@@ -258,7 +259,7 @@ const ResultImageGenerator = ({ tournament, winners, onClose, uploadedImagePath 
                   Uploaded Result Image:
                 </h4>
                 <img
-                  src={`http://localhost:5000${uploadedImagePath}`}
+                  src={`${API_BASE_URL}${uploadedImagePath}`}
                   alt="Uploaded Tournament Results"
                   style={{
                     maxWidth: "100%",

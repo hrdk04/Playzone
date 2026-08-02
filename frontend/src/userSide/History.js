@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom"
 import UserSideNav from "./UserSideNav"
 import axios from "axios"
 import "./History.css" // ✅ INJECTING THE NEW CSS
+import API_BASE_URL from "../config/apiConfig";
 
 const History = () => {
   const navigate = useNavigate()
@@ -26,13 +27,13 @@ const History = () => {
         if (!user?._id) {
           const userName = localStorage.getItem("userName")
           if (userName) {
-            const res = await axios.get(`http://localhost:5000/user/${encodeURIComponent(userName)}`)
+            const res = await axios.get(`${API_BASE_URL}/user/${encodeURIComponent(userName)}`)
             user = res.data
           }
         }
         if (!user?._id) return
 
-        const tRes = await axios.get(`http://localhost:5000/tournaments/joined/${user._id}`)
+        const tRes = await axios.get(`${API_BASE_URL}/tournaments/joined/${user._id}`)
         const completed = (tRes.data || []).filter((t) => String(t.t_status).toLowerCase() === "completed")
 
         const mapped = completed.map((t, idx) => ({

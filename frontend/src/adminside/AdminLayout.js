@@ -12,6 +12,7 @@ import TournamentResults from "./TournamentResults";
 import AdminProfile from "./components/AdminNotificationSettings";
 import { SWRConfig } from "swr";
 import axios from "axios";
+import API_BASE_URL from "../config/apiConfig";
 
 const AdminLayout = () => {
   const isAdminLoggedIn = localStorage.getItem("admin");
@@ -104,7 +105,7 @@ const AdminLayout = () => {
             value={{
               fetcher: (url) =>
                 axios
-                  .get(`http://localhost:5000${url.startsWith("/") ? "" : "/"}${url}`)
+                  .get(`${API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`)
                   .then((r) => r.data),
               dedupingInterval: 3000,
               revalidateOnFocus: false,

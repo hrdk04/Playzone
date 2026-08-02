@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { SkeletonGrid } from "../components/Skeleton";
 import "./Home.css";
+import API_BASE_URL from "../config/apiConfig";
 
 const getGameThumbnail = (game) => {
   const thumbnails = {
@@ -45,7 +46,7 @@ export default function Home() {
   useEffect(() => {
     const fetchHomeData = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/admin/tournaments");
+        const response = await axios.get(`${API_BASE_URL}/admin/tournaments`);
         const tournaments = response.data;
         
         // Get Top 3 Upcoming Tournaments for the cards

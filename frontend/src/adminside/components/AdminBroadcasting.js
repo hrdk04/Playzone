@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import API_BASE_URL from "../../config/apiConfig";
 
 const AdminBroadcasting = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -18,7 +19,7 @@ const AdminBroadcasting = () => {
 
   const loadTemplates = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/admin/broadcast/templates');
+      const response = await axios.get(`${API_BASE_URL}/admin/broadcast/templates`);
       setTemplates(response.data);
     } catch (error) {
       console.error('Failed to load templates:', error);
@@ -27,7 +28,7 @@ const AdminBroadcasting = () => {
 
   const loadTournaments = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/admin/tournaments');
+      const response = await axios.get(`${API_BASE_URL}/admin/tournaments`);
       setTournaments(response.data);
     } catch (error) {
       console.error('Failed to load tournaments:', error);
@@ -54,7 +55,7 @@ const AdminBroadcasting = () => {
         ...(tournamentId && { tournamentId })
       };
 
-      const response = await axios.post('http://localhost:5000/admin/broadcast', broadcastData);
+      const response = await axios.post(`${API_BASE_URL}/admin/broadcast`, broadcastData);
       
       alert(`Broadcast sent successfully!\nRecipients: ${response.data.recipients}\nSuccess: ${response.data.successCount}\nFailed: ${response.data.failureCount}`);
       

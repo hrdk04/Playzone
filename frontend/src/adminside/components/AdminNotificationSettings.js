@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react"
 import axios from "axios"
 import toast, { Toaster } from "react-hot-toast"
 import theme from "../../theme"
+import API_BASE_URL from "../../config/apiConfig";
 
 const AdminProfile = ({ username, isMobile = false }) => {
   // Profile states
@@ -29,7 +30,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
       if (!username) return
       try {
         const { data } = await axios.get(
-          `http://localhost:5000/admin/profile?username=${encodeURIComponent(username)}`
+          `${API_BASE_URL}/admin/profile?username=${encodeURIComponent(username)}`
         )
         setProfile(data)
         setEmail(data.notificationEmail || "")
@@ -62,7 +63,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
 
     try {
       await axios.post(
-        "http://localhost:5000/admin/email/send-otp",
+        `${API_BASE_URL}/admin/email/send-otp`,
         { username, email },
         { headers: { "Content-Type": "application/json" } }
       )
@@ -80,7 +81,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
     if (!otp) return toast.error("Enter OTP")
     try {
       await axios.post(
-        "http://localhost:5000/admin/email/verify-otp",
+        `${API_BASE_URL}/admin/email/verify-otp`,
         { username, otp },
         { headers: { "Content-Type": "application/json" } }
       )
@@ -89,7 +90,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
       toast.success("Email verified! You will now receive tournament notifications.")
       // Refresh profile data
       const { data } = await axios.get(
-        `http://localhost:5000/admin/profile?username=${encodeURIComponent(username)}`
+        `${API_BASE_URL}/admin/profile?username=${encodeURIComponent(username)}`
       )
       setProfile(data)
     } catch (err) {
@@ -120,7 +121,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
     setChangingPassword(true)
     try {
       await axios.put(
-        "http://localhost:5000/admin/change-password",
+        `${API_BASE_URL}/admin/change-password`,
         { username, currentPassword, newPassword },
         { headers: { "Content-Type": "application/json" } }
       )

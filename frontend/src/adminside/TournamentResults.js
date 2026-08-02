@@ -5,6 +5,7 @@ import useSWR from "swr"
 import axios from "axios"
 import { useMemo, useState } from "react"
 import ResultImageGenerator from "./components/ResultImageGenerator"
+import API_BASE_URL from "../config/apiConfig";
 
 const TournamentResults = () => {
   const { id } = useParams()
@@ -21,7 +22,7 @@ const TournamentResults = () => {
   const [uploadedImagePath, setUploadedImagePath] = useState("")
 
   const { data: withParts, error: withPartsError, mutate: mutateWithParts } = useSWR(
-    "http://localhost:5000/admin/tournaments/withParticipants",
+    `${API_BASE_URL}/admin/tournaments/withParticipants`,
     (url) => axios.get(url).then((r) => r.data),
     {
       revalidateOnFocus: false,
@@ -84,7 +85,7 @@ const TournamentResults = () => {
         formData.append("resultImage", manualResultImage)
         
         try {
-          const uploadResponse = await axios.post(`http://localhost:5000/admin/tournaments/${id}/upload-result-image`, formData, {
+          const uploadResponse = await axios.post(`${API_BASE_URL}/admin/tournaments/${id}/upload-result-image`, formData, {
             headers: {
               "Content-Type": "multipart/form-data",
             },
@@ -98,7 +99,7 @@ const TournamentResults = () => {
       }
 
       // Publish results with optional image path
-      await axios.put(`http://localhost:5000/admin/tournaments/${id}/publish-result`, {
+      await axios.put(`${API_BASE_URL}/admin/tournaments/${id}/publish-result`, {
         rankings,
         result_image_path: result_image_path || undefined
       })
@@ -458,7 +459,7 @@ const TournamentResults = () => {
                   const base64Image = reader.result
                   try {
                     // Send only the image data to backend to share with participants
-                    await axios.post(`http://localhost:5000/admin/tournaments/${id}/share-result-image`, {
+                    await axios.post(`${API_BASE_URL}/admin/tournaments/${id}/share-result-image`, {
                       resultImage: base64Image
                     })
                     alert("Result image shared with all tournament participants!")

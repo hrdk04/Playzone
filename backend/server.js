@@ -48,12 +48,21 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-// CORS configuration for chat integration
+// CORS configuration - origins loaded from environment variable
+// Set FRONTEND_ORIGIN in .env as a comma-separated list of allowed origins,
+// e.g. FRONTEND_ORIGIN=http://localhost:3000,http://localhost:3001
+const allowedOrigins = process.env.FRONTEND_ORIGIN
+  ? process.env.FRONTEND_ORIGIN.split(',').map(origin => origin.trim())
+  : ["http://localhost:3000", "http://localhost:3001"];
+
 const corsOptions = {
-  origin: ["http://localhost:3000", "http://localhost:3001"], // PlayZone and Chat frontends
+  origin: allowedOrigins,
   credentials: true,
   optionsSuccessStatus: 200
 };
+
+// Frontend URL for email template links
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 app.use(cors(corsOptions))
 app.use(bodyParser.json({ limit: '50mb' }))
@@ -1099,7 +1108,7 @@ app.post("/admin/broadcast", async (req, res) => {
         </div>
         
         <div style="margin: 25px 0;">
-          <a href="http://localhost:3000/DashBoard" target="_blank" style="
+          <a href="${FRONTEND_URL}/DashBoard" target="_blank" style="
             background: linear-gradient(90deg, #00ffcc, #0077ff);
             padding: 12px 25px;
             color: #fff;
@@ -2282,7 +2291,7 @@ app.put("/admin/tournaments/:id/publish-result", async (req, res) => {
                     </div>
 
                     <div style="margin: 25px 0;">
-                      <a href="http://localhost:3000/DashBoard" target="_blank" style="
+                      <a href="${FRONTEND_URL}/DashBoard" target="_blank" style="
                         background: linear-gradient(90deg, #00ffcc, #0077ff);
                         padding: 12px 25px;
                         color: #fff;
@@ -2413,7 +2422,7 @@ app.post("/admin/tournaments/:id/share-result-image", async (req, res) => {
             </p>
             
             <div style="margin: 25px 0;">
-              <a href="http://localhost:3000/tournaments" target="_blank" style="
+              <a href="${FRONTEND_URL}/tournaments" target="_blank" style="
                 background: linear-gradient(90deg, #00ffcc, #0077ff);
                 padding: 12px 25px;
                 color: #fff;

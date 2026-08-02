@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./FinalResults.css";
+import API_BASE_URL from "../config/apiConfig";
 
 const FinalResults = () => {
   const navigate = useNavigate();
@@ -16,10 +17,10 @@ const FinalResults = () => {
   useEffect(() => {
     const fetchTournamentResults = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/admin/tournaments/${id}`);
+        const response = await axios.get(`${API_BASE_URL}/admin/tournaments/${id}`);
         setTournament(response.data);
         if (emailOrUsername) {
-          const userRes = await axios.get(`http://localhost:5000/user/${emailOrUsername}`);
+          const userRes = await axios.get(`${API_BASE_URL}/user/${emailOrUsername}`);
           setUserData(userRes.data);
         } else {
           setUserData(null);

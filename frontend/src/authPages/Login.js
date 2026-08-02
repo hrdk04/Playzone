@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import toast from 'react-hot-toast';
 import "./Auth.css";
+import API_BASE_URL from "../config/apiConfig";
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -23,7 +24,7 @@ export default function Login() {
     
     try {
       if (formData.emailOrUsername.endsWith("_admin")) {
-        const response = await axios.post("http://localhost:5000/adminLogin", formData);
+        const response = await axios.post(`${API_BASE_URL}/adminLogin`, formData);
         const cleanUsername = formData.emailOrUsername.replace(/_admin$/, "");
         localStorage.setItem(
           "admin",
@@ -34,7 +35,7 @@ export default function Login() {
         toast.success('Welcome back, Admin');
         setTimeout(() => navigate("/admin"), 1000);
       } else {
-        const response = await axios.post("http://localhost:5000/login", formData);
+        const response = await axios.post(`${API_BASE_URL}/login`, formData);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         localStorage.setItem("userName", response.data.user.username);
         if (response.data.token) {

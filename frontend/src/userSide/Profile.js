@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import UserSideNav from "./UserSideNav";
 import "./Profile.css"; // ✅ INJECTING THE NEW CSS
+import API_BASE_URL from "../config/apiConfig";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -38,11 +39,11 @@ export default function Profile() {
       if (!emailOrUsername || !userId) return;
       try {
         setLoading(true);
-        const fullData = await axios.get(`http://localhost:5000/user/${emailOrUsername}`);
+        const fullData = await axios.get(`${API_BASE_URL}/user/${emailOrUsername}`);
         setUser(fullData.data);
 
         // Fetch tournaments joined by user
-        const tournamentsRes = await axios.get(`http://localhost:5000/tournaments/joined/${userId}`);
+        const tournamentsRes = await axios.get(`${API_BASE_URL}/tournaments/joined/${userId}`);
         const tournaments = tournamentsRes.data || [];
 
         setJoinedCount(tournaments.length);
@@ -75,7 +76,7 @@ export default function Profile() {
     e.preventDefault();
     try {
       setLoading(true);
-      const response = await axios.put("http://localhost:5000/updateUser", user);
+      const response = await axios.put(`${API_BASE_URL}/updateUser`, user);
       setMessage(response.data.message);
       setIsEditing(false);
     } catch (error) {

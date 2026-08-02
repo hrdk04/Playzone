@@ -5,6 +5,7 @@ import io from 'socket.io-client';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import "./ChatPage.css";
+import API_BASE_URL from "../config/apiConfig";
 
 const ChatPage = () => {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ const ChatPage = () => {
   }, [navigate]);
 
   const initializeSocket = (token) => {
-    const newSocket = io('http://localhost:5000', {
+    const newSocket = io(API_BASE_URL, {
       auth: { token },
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -106,7 +107,7 @@ const ChatPage = () => {
 
   const loadConversations = useCallback(async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/conversations', { headers: getHeaders() });
+      const res = await axios.get(`${API_BASE_URL}/api/conversations`, { headers: getHeaders() });
       setConversations(res.data);
     } catch (error) {
       console.error('Failed to load conversations:', error);
@@ -115,7 +116,7 @@ const ChatPage = () => {
 
   const loadPendingRequestsCount = async () => {
     try {
-      const pendingResponse = await axios.get('http://localhost:5000/api/follow/pending', { headers: getHeaders() });
+      const pendingResponse = await axios.get(`${API_BASE_URL}/api/follow/pending`, { headers: getHeaders() });
       setPendingRequestsCount(pendingResponse.data.length);
     } catch (error) {
       console.error('Failed to load pending requests count:', error);
@@ -127,7 +128,7 @@ const ChatPage = () => {
       setLoading(true);
       await loadConversations();
       
-      const suggestionsResponse = await axios.get('http://localhost:5000/api/users/suggested', { headers: getHeaders() });
+      const suggestionsResponse = await axios.get(`${API_BASE_URL}/api/users/suggested`, { headers: getHeaders() });
       setSuggestedUsers(suggestionsResponse.data);
       
       await loadPendingRequestsCount();
@@ -154,7 +155,7 @@ const ChatPage = () => {
       }
 
       // Fetch message history
-      const res = await axios.get(`http://localhost:5000/api/messages/${userId}`, { headers: getHeaders() });
+      const res = await axios.get(`${API_BASE_URL}/api/messages/${userId}`, { headers: getHeaders() });
       setMessages(res.data);
 
       setTimeout(() => {
@@ -174,7 +175,7 @@ const ChatPage = () => {
     }
 
     try {
-      const response = await axios.get(`http://localhost:5000/api/users/search?q=${searchQuery}`, { headers: getHeaders() });
+      const response = await axios.get(`${API_BASE_URL}/api/users/search?q=${searchQuery}`, { headers: getHeaders() });
       setSearchResults(response.data);
       toast.success(`Found ${response.data.length} players`);
     } catch (error) {
@@ -208,7 +209,7 @@ const ChatPage = () => {
 
   const handleFollowRequest = async (userId) => {
     try {
-      await axios.post('http://localhost:5000/api/follow/request', { userId }, { headers: getHeaders() });
+      await axios.post(`${API_BASE_URL}/api/follow/request`, { userId }, { headers: getHeaders() });
       
       if (socket) {
         socket.emit("followRequestSent", { receiverId: userId });
@@ -223,7 +224,7 @@ const ChatPage = () => {
 
   const handleCancelRequest = async (userId) => {
     try {
-      await axios.post('http://localhost:5000/api/follow/cancel', { userId }, { headers: getHeaders() });
+      await axios.post(`${API_BASE_URL}/api/follow/cancel`, { userId }, { headers: getHeaders() });
       toast.success('Request cancelled');
       loadUserData();
     } catch (error) {

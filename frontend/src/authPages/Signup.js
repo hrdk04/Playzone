@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from 'axios';
 import toast, { Toaster } from "react-hot-toast";
 import "./Auth.css";
+import API_BASE_URL from "../config/apiConfig";
 
 export default function Signup() {
   const [step, setStep] = useState(1);
@@ -170,7 +171,7 @@ export default function Signup() {
 
     if (formData.otp === serverOtp) {
       try {
-        await axios.post("http://localhost:5000/signup", formData);
+        await axios.post(`${API_BASE_URL}/signup`, formData);
         toast.success("Signup successful! Redirecting to login...");
         setTimeout(() => navigate("/login"), 2000);
       } catch (error) {

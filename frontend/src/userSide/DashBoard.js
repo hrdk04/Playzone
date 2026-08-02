@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import UserSideNav from "./UserSideNav"
 import axios from "axios"
 import "./DashBoard.css"
+import API_BASE_URL from "../config/apiConfig";
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -28,13 +29,13 @@ export default function Dashboard() {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const userRes = await axios.get(`http://localhost:5000/user/id/${userId}`)
+        const userRes = await axios.get(`${API_BASE_URL}/user/id/${userId}`)
         setUser(userRes.data)
 
-        const txnRes = await axios.get(`http://localhost:5000/payment/history/${userId}`)
+        const txnRes = await axios.get(`${API_BASE_URL}/payment/history/${userId}`)
         setTransactions(txnRes.data)
 
-        const tournamentsRes = await axios.get(`http://localhost:5000/tournaments/joined/${userId}`)
+        const tournamentsRes = await axios.get(`${API_BASE_URL}/tournaments/joined/${userId}`)
         const allTournaments = tournamentsRes.data || []
         
         setTournamentsResult(allTournaments)
@@ -108,7 +109,7 @@ export default function Dashboard() {
         refundAmount -= deducted
       }
 
-      await axios.post(`http://localhost:5000/tournament/cancel`, {
+      await axios.post(`${API_BASE_URL}/tournament/cancel`, {
         user_id: userId,
         tournament_id: tournament.t_id,
         refund_amount: refundAmount,
@@ -119,7 +120,7 @@ export default function Dashboard() {
       setJoinedTournaments((prev) => prev.filter((t) => t.t_id !== tournament.t_id))
       setUser((prev) => ({ ...prev, amount: prev.amount + refundAmount }))
 
-      const txnRes = await axios.get(`http://localhost:5000/payment/history/${userId}`)
+      const txnRes = await axios.get(`${API_BASE_URL}/payment/history/${userId}`)
       setTransactions(txnRes.data)
     } catch (err) {
       console.error("Cancel tournament error:", err)

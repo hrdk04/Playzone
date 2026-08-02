@@ -4,6 +4,7 @@ import theme from "../theme"
 import useSWR from "swr"
 import axios from "axios"
 import { useEffect, useMemo, useState } from "react"
+import API_BASE_URL from "../config/apiConfig";
 
 const mockParticipants = (id) => [
   { id: `u-${id}-1`, name: "John Doe", username: "johnny", email: "john@example.com" },
@@ -33,7 +34,7 @@ const TournamentStart = () => {
   const [running, setRunning] = useState(false)
   const [completed, setCompleted] = useState(false)
 
-  const { data: withParts } = useSWR("http://localhost:5000/admin/tournaments/withParticipants", (url) =>
+  const { data: withParts } = useSWR(`${API_BASE_URL}/admin/tournaments/withParticipants`, (url) =>
     axios.get(url).then((r) => r.data),
   )
 
@@ -56,7 +57,7 @@ const TournamentStart = () => {
       }
       if (endTime && now >= endTime && !completed) {
         try {
-          await axios.put(`http://localhost:5000/admin/tournaments/${id}`, { t_status: "completed" })
+          await axios.put(`${API_BASE_URL}/admin/tournaments/${id}`, { t_status: "completed" })
           setCompleted(true)
         } catch (e) {
           console.error("[v0] auto-complete failed:", e)

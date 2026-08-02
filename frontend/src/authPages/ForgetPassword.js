@@ -3,6 +3,7 @@ import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import toast from 'react-hot-toast';
 import "./Auth.css";
+import API_BASE_URL from "../config/apiConfig";
 
 export default function ForgetPassword() {
   const [step, setStep] = useState(1);
@@ -22,7 +23,7 @@ export default function ForgetPassword() {
   const handleSendOtp = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/auth/send-otp", { email: formData.email });
+      await axios.post(`${API_BASE_URL}/auth/send-otp`, { email: formData.email });
       toast.success("OTP sent to your email!");
       setStep(2);
     } catch (err) {
@@ -33,7 +34,7 @@ export default function ForgetPassword() {
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/auth/verify-otp", {
+      await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
         email: formData.email,
         otp: formData.otp,
       });
@@ -51,7 +52,7 @@ export default function ForgetPassword() {
     }
 
     try {
-      const res = await axios.put("http://localhost:5000/forgetPass", {
+      const res = await axios.put(`${API_BASE_URL}/forgetPass`, {
         email: formData.email,
         newPassword: formData.newPassword,
       });

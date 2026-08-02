@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import axios from "axios"
 import theme from "../theme"
 import { useNavigate } from "react-router-dom"
+import API_BASE_URL from "../config/apiConfig";
 
 const AdminPlayers = () => {
   const [players, setPlayers] = useState([])
@@ -16,7 +17,7 @@ const AdminPlayers = () => {
   // Fetch players
   const fetchPlayers = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/admin/players", {
+      const res = await axios.get(`${API_BASE_URL}/admin/players`, {
         params: { search, page, limit },
       })
       setPlayers(res.data.users)
@@ -34,7 +35,7 @@ const AdminPlayers = () => {
   const deletePlayer = async (id) => {
     if (!window.confirm("Are you sure you want to delete this player?")) return
     try {
-      await axios.delete(`http://localhost:5000/admin/players/${id}`)
+      await axios.delete(`${API_BASE_URL}/admin/players/${id}`)
       fetchPlayers()
     } catch (err) {
       console.error("Error deleting player:", err)

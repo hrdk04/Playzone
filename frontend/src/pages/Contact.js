@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import "./Contact.css";
+import API_BASE_URL from "../config/apiConfig";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -456,7 +457,7 @@ const Contact = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:5000/contact/submit", formData);
+      const response = await axios.post(`${API_BASE_URL}/contact/submit`, formData);
       toast.success(response.data.message);
       setFormData({ name: "", email: "", subject: "", message: "" });
       setShowContactForm(false);

@@ -1,6 +1,7 @@
 import cron from "node-cron"
 import nodemailer from "nodemailer"
 import axios from "axios"
+import API_BASE_URL from "../config/apiConfig";
 
 // ==========================
 // EMAIL SETUP
@@ -46,7 +47,7 @@ const updateTournamentStatuses = async () => {
   try {
     console.log("Playzone Running tournament status update...")
 
-    const { data: tournaments } = await axios.get("http://localhost:5000/admin/tournaments")
+    const { data: tournaments } = await axios.get(`${API_BASE_URL}/admin/tournaments`)
     if (!tournaments || tournaments.length === 0) {
       console.log("Playzone No tournaments found")
       return
@@ -71,7 +72,7 @@ const updateTournamentStatuses = async () => {
 
         if (newStatus !== tournament.t_status) {
           console.log(`Playzone Updating tournament ${tournament.t_id} from ${tournament.t_status} → ${newStatus}`)
-          await axios.put(`http://localhost:5000/admin/tournaments/${tournament.t_id}`, {
+          await axios.put(`${API_BASE_URL}/admin/tournaments/${tournament.t_id}`, {
             t_status: newStatus,
           })
           updatedCount++
@@ -99,7 +100,7 @@ cron.schedule("* * * * *", async () => {
 // ==========================
 cron.schedule("*/15 * * * *", async () => {
   try {
-    const { data: tournaments } = await axios.get("http://localhost:5000/admin/upcoming-tournaments")
+    const { data: tournaments } = await axios.get(`${API_BASE_URL}/admin/upcoming-tournaments`)
     const now = new Date()
 
     tournaments.forEach((tour) => {

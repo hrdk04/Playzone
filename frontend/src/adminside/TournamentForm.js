@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import axios from "axios"
 import theme from "../theme"
 import useSWR from "swr"
+import API_BASE_URL from "../config/apiConfig";
 
 // ✅ GAME THUMBNAIL MAPPING
 const GAME_THUMBNAILS = {
@@ -79,14 +80,14 @@ const TournamentForm = ({ mode = "create" }) => {
 
   // -------------------- Fetch Tournament if update --------------------
   const { data: tData, isLoading: isLoadingT } = useSWR(
-    isUpdate && id ? `http://localhost:5000/admin/tournaments/${id}` : null,
+    isUpdate && id ? `${API_BASE_URL}/admin/tournaments/${id}` : null,
     (url) => axios.get(url).then((res) => res.data),
   )
 
   // ✅ Fetch registered teams count for update mode
   useEffect(() => {
     if (isUpdate && id) {
-      axios.get(`http://localhost:5000/admin/tournaments/${id}/registrations`)
+      axios.get(`${API_BASE_URL}/admin/tournaments/${id}/registrations`)
         .then(res => {
           setRegisteredTeams(res.data?.count || 0)
         })
@@ -232,10 +233,10 @@ const TournamentForm = ({ mode = "create" }) => {
 
     try {
       if (isUpdate) {
-        await axios.put(`http://localhost:5000/admin/tournaments/${id}`, payload)
+        await axios.put(`${API_BASE_URL}/admin/tournaments/${id}`, payload)
         alert("✅ Tournament updated successfully!")
       } else {
-        await axios.post("http://localhost:5000/admin/tournaments", payload)
+        await axios.post(`${API_BASE_URL}/admin/tournaments`, payload)
         alert("✅ Tournament created successfully!")
       }
       navigate("/admin/tournaments")
