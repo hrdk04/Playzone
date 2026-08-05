@@ -105,8 +105,10 @@ const AdminLayout = () => {
         <main
           style={{
             flex: 1,
-            padding: mainPadding,
             paddingTop: mainPaddingTop,
+            paddingRight: mainPadding,
+            paddingLeft: mainPadding,
+            paddingBottom: mainPadding,
             width: "100%",
             maxWidth: "100%", // prevent overflow
             boxSizing: "border-box",

@@ -19,6 +19,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
   const [resendCooldown, setResendCooldown] = useState(0)
   const [editingEmail, setEditingEmail] = useState(false)
   const [sendingOtp, setSendingOtp] = useState(false)
+  const [sendingError, setSendingError] = useState("")
 
   // Security states
   const [currentPassword, setCurrentPassword] = useState("")
@@ -101,7 +102,8 @@ const AdminProfile = ({ username, isMobile = false }) => {
 
     try {
       setSendingOtp(true)
-      await axios.post(
+      setSendingError("")
+      const res = await axios.post(
         `${API_BASE_URL}/admin/email/send-otp`,
         { username: resolvedUsername, email },
         { headers: { "Content-Type": "application/json" } }
@@ -109,11 +111,13 @@ const AdminProfile = ({ username, isMobile = false }) => {
       setOtpSent(true)
       setNotificationStatus("pending")
       setResendCooldown(30)
-      toast.success("OTP sent to your email")
+      toast.success(res.data?.message || "OTP sent to your email")
       // keep editing mode until verification
     } catch (err) {
       console.error("Send OTP error:", err)
-      toast.error(err?.response?.data?.message || "Failed to send OTP")
+      const msg = err?.response?.data?.message || err?.message || "Failed to send OTP"
+      setSendingError(msg)
+      toast.error(msg)
     } finally {
       setSendingOtp(false)
     }
@@ -460,6 +464,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
               >
                 {sendingOtp ? "Sending..." : "Send Verification OTP"}
               </button>
+              {sendingError && <p style={{ color: "#ff4d4f", marginTop: "0.5rem" }}>{sendingError}</p>}
             </div>
           )}
 
@@ -518,6 +523,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
                 <button onClick={cancelEditEmail} style={{ flex: 1, padding: "0.75rem 1.5rem", background: theme.colors.secondary, border: "none", borderRadius: "6px", color: "#fff" }}>
                   Cancel
                 </button>
+                {sendingError && <p style={{ color: "#ff4d4f", marginTop: "0.5rem" }}>{sendingError}</p>}
               </div>
             </div>
           )}
