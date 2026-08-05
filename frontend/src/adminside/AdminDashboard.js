@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import theme from "../theme";
+import adminTheme from "./adminTheme";
 import toast, { Toaster } from "react-hot-toast";
 import {
   LineChart,
@@ -168,21 +169,30 @@ export default function AdminDashboard({ isMobile = false }) {
   const panelStyle = {
     flex: "1 1 220px",
     minWidth: 220,
-    background: theme.gradients.navbarAlt1,
+    background: adminTheme.surface,
     padding: 20,
     borderRadius: 12,
     textAlign: "center",
     cursor: "pointer",
     transition: "all 0.3s ease",
-    boxShadow: theme.shadows.sectionTitleGlow,
-    border: `1px solid ${theme.colors.primary}`,
+    boxShadow: adminTheme.cardShadow,
+    border: `1px solid ${adminTheme.border}`,
+    color: adminTheme.textPrimary,
   };
 
   return (
-    <div style={{ padding: isMobile ? "1rem" : "20px", backgroundColor: theme.colors.backgroundColor, color: theme.colors.white, minHeight: "100vh", fontFamily: theme.fonts.primary }}>
+    <div
+      style={{
+        padding: isMobile ? "1rem" : "20px",
+        backgroundColor: adminTheme.pageBg,
+        color: adminTheme.textPrimary,
+        minHeight: "100vh",
+        fontFamily: "'Rajdhani', 'Poppins', sans-serif",
+      }}
+    >
       <Toaster position="top-right" reverseOrder={false} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <h1 style={{ fontSize: isMobile ? "1.8rem" : "2.5rem", textShadow: theme.shadows.headerGlow, color: theme.colors.primary, margin: 0 }}>
+        <h1 style={{ fontSize: isMobile ? "1.8rem" : "2.5rem", textShadow: theme.shadows.headerGlow, color: adminTheme.accent, margin: 0 }}>
           Admin Dashboard
         </h1>
         <AdminBroadcasting />
@@ -212,9 +222,17 @@ export default function AdminDashboard({ isMobile = false }) {
              <div style={{ ...panelStyle, minHeight: "400px", overflowY: "auto" }}>
               <h2>🤖 AI Assistant & Live Alerts</h2>
               {aiTips.length > 0 && aiTips.map((tip, i) => (
-                <div key={i} style={{ padding: 8, marginTop: 6, borderLeft: `4px solid ${tip.type === "warning" ? "#ffc107" : tip.type === "success" ? "#00c9a7" : "#007bff"}`, background: "rgba(255,255,255,0.05)" }}>
+                <div
+                  key={i}
+                  style={{
+                    padding: 8,
+                    marginTop: 6,
+                    borderLeft: `4px solid ${tip.type === "warning" ? adminTheme.warning : tip.type === "success" ? adminTheme.success : adminTheme.accent}`,
+                    background: adminTheme.surfaceAlt,
+                  }}
+                >
                   <strong>{tip.title}</strong>
-                  <p>{tip.message}</p>
+                  <p style={{ color: adminTheme.textSecondary }}>{tip.message}</p>
                 </div>
               ))}
 
@@ -223,10 +241,10 @@ export default function AdminDashboard({ isMobile = false }) {
             <div style={panelStyle}>
              
               {liveNotifications.length > 0 && (
-                <div style={{ marginTop: 12, padding: 8, background: "rgba(255,0,0,0.1)", borderRadius: 6, border: "1px solid #ff6b6b" }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: "bold", color: "#ff6b6b", marginBottom: 4 }}>🔔 Live Alerts ({liveNotifications.length})</div>
+                <div style={{ marginTop: 12, padding: 8, background: "rgba(239, 68, 68, 0.12)", borderRadius: 6, border: `1px solid ${adminTheme.danger}` }}>
+                  <div style={{ fontSize: '1.5rem', fontWeight: "bold", color: adminTheme.danger, marginBottom: 4 }}>🔔 Live Alerts ({liveNotifications.length})</div>
                   {liveNotifications.map((notif, idx) => (
-                    <div key={idx} style={{ fontSize: '1.2rem', textAlign:'justify',padding:'10px', color: notif.type === "critical" ? "#ff4c4c" : notif.type === "warning" ? "#ffc107" : "#4ecdc4", marginBottom: 2 }}>
+                    <div key={idx} style={{ fontSize: '1.2rem', textAlign:'justify',padding:'10px', color: notif.type === "critical" ? adminTheme.danger : notif.type === "warning" ? adminTheme.warning : adminTheme.accent, marginBottom: 2 }}>
                       • {notif.message}
                       {/* {console.log(notif.message)} */}
                     </div>
@@ -244,25 +262,25 @@ export default function AdminDashboard({ isMobile = false }) {
       {/* Charts Section */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "1rem" : "30px", marginBottom: "40px" }}>
         {/* Tournament Growth */}
-        <div style={{ background: theme.gradients.navbarAlt1, borderRadius: 12, padding: isMobile ? "1rem" : "20px", border: `1px solid ${theme.colors.primary}` }}>
-          <h3 style={{ marginBottom: 15, color: theme.colors.secondary }}>Tournament Growth</h3>
+        <div style={{ background: adminTheme.surface, borderRadius: 12, padding: isMobile ? "1rem" : "20px", border: `1px solid ${adminTheme.border}` }}>
+          <h3 style={{ marginBottom: 15, color: adminTheme.accent }}>Tournament Growth</h3>
           <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
             <LineChart data={stats.tournamentGrowth || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <XAxis dataKey="month" stroke="var(--text-secondary)" />
+              <YAxis stroke="var(--text-secondary)" />
               <Tooltip />
-              <Line type="monotone" dataKey="tournaments" stroke={theme.colors.secondary} strokeWidth={2} />
+              <Line type="monotone" dataKey="tournaments" stroke="var(--accent-cyan)" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
         {/* Top Games */}
-        <div style={{ background: theme.gradients.navbarAlt1, borderRadius: 12, padding: isMobile ? "1rem" : "20px", border: `1px solid ${theme.colors.primary}` }}>
-          <h3 style={{ marginBottom: 15, color: theme.colors.secondary }}>Top Games Played</h3>
+        <div style={{ background: adminTheme.surface, borderRadius: 12, padding: isMobile ? "1rem" : "20px", border: `1px solid ${adminTheme.border}` }}>
+          <h3 style={{ marginBottom: 15, color: adminTheme.accent }}>Top Games Played</h3>
           <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
             <PieChart>
-              <Pie data={topGames || []} dataKey="count" nameKey="game" outerRadius={120} fill={theme.colors.primary} label />
+              <Pie data={topGames || []} dataKey="count" nameKey="game" outerRadius={120} fill="var(--accent-cyan)" label />
               <Legend />
               <Tooltip />
             </PieChart>
@@ -271,12 +289,12 @@ export default function AdminDashboard({ isMobile = false }) {
       </div>
 
       {/* Recent Transactions */}
-      <div style={{ background: theme.gradients.navbarAlt1, borderRadius: 12, padding: isMobile ? "1rem" : "20px", border: `1px solid ${theme.colors.primary}` }}>
-        <h3 style={{ marginBottom: 15, color: theme.colors.secondary }}>Recent Transactions</h3>
+      <div style={{ background: adminTheme.surface, borderRadius: 12, padding: isMobile ? "1rem" : "20px", border: `1px solid ${adminTheme.border}` }}>
+        <h3 style={{ marginBottom: 15, color: adminTheme.accent }}>Recent Transactions</h3>
         <div style={{ overflowX: isMobile ? "auto" : "visible" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: isMobile ? 400 : "auto" }}>
             <thead>
-              <tr style={{ color: theme.colors.primary }}>
+              <tr style={{ color: adminTheme.textPrimary }}>
                 <th>Amount</th>
                 <th>Type</th>
                 <th>Date</th>
@@ -284,7 +302,7 @@ export default function AdminDashboard({ isMobile = false }) {
             </thead>
             <tbody>
               {recentTransactions.slice(0, 5).map((tx, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid #333" }}>
+                <tr key={i} style={{ borderBottom: `1px solid ${adminTheme.border}` }}>
                   <td>₹{Number(tx.amount).toFixed(2)}</td>
                   <td>{tx.type}</td>
                   <td>{new Date(tx.date).toLocaleString()}</td>
@@ -296,7 +314,7 @@ export default function AdminDashboard({ isMobile = false }) {
         </div>
         {recentTransactions.length > 5 && (
           <div style={{ marginTop: 10, textAlign: "right" }}>
-            <button style={{ padding: "6px 12px", backgroundColor: theme.colors.primary, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }} onClick={() => navigate("/admin/transactions")}>
+            <button style={{ padding: "6px 12px", background: adminTheme.gradientPrimary, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }} onClick={() => navigate("/admin/transactions")}>
               View All
             </button>
           </div>

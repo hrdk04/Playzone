@@ -1,6 +1,6 @@
 "use client"
 import { useNavigate } from "react-router-dom"
-import theme from "../../theme"
+import adminTheme from "../adminTheme"
 
 const AdminNavbar = ({ onMenuClick, isMobile }) => {
   const navigate = useNavigate()
@@ -20,17 +20,18 @@ const AdminNavbar = ({ onMenuClick, isMobile }) => {
         left: 0,
         right: 0,
         zIndex: 1000,
-        background: theme.gradients.navbar,
+        background:
+          "linear-gradient(90deg, var(--bg-secondary), var(--bg-tertiary))",
         height: "64px",
         padding: isMobile ? "0 0.5rem" : "0 1rem",
-        color: theme.colors.white,
-        borderLeft: isMobile ? `5px solid ${theme.colors.primary}` : `10px solid ${theme.colors.primary}`,
-        borderBottom: `1px solid ${theme.colors.primary}`,
-        borderRight: isMobile ? `5px solid ${theme.colors.primary}` : `10px solid ${theme.colors.primary}`,
+        color: adminTheme.textPrimary,
+        borderLeft: isMobile ? `5px solid ${adminTheme.accent}` : `10px solid ${adminTheme.accent}`,
+        borderBottom: `1px solid ${adminTheme.border}`,
+        borderRight: isMobile ? `5px solid ${adminTheme.accent}` : `10px solid ${adminTheme.accent}`,
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        boxShadow: theme.shadows.navbarShadow,
+        boxShadow: adminTheme.cardShadow,
       }}
     >
       <div style={{ 
@@ -45,7 +46,7 @@ const AdminNavbar = ({ onMenuClick, isMobile }) => {
             style={{
               background: "transparent",
               border: "none",
-              color: theme.colors.white,
+              color: adminTheme.textPrimary,
               cursor: "pointer",
               padding: "0.5rem",
               fontSize: "1.2rem",
@@ -72,10 +73,10 @@ const AdminNavbar = ({ onMenuClick, isMobile }) => {
           onClick={handleLogout}
           style={{
             background: "transparent",
-            border: `1px solid ${theme.colors.white}`,
+            border: `1px solid ${adminTheme.border}`,
             borderRadius: "8px",
             padding: isMobile ? "0.3rem 0.6rem" : "0.4rem 0.8rem",
-            color: theme.colors.white,
+            color: adminTheme.textPrimary,
             cursor: "pointer",
             fontSize: isMobile ? "0.9rem" : "1rem",
           }}

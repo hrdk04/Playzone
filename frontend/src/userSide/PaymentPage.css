@@ -32,7 +32,7 @@
 .payment-page-title {
   font-size: 2.2rem;
   font-weight: 800;
-  color: #fff;
+  color: var(--text-primary);
   text-shadow: 0 0 15px rgba(0, 201, 167, 0.3);
   margin: 0;
 }
@@ -127,7 +127,7 @@
 
 .wallet-refresh-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  color: var(--text-primary);
 }
 
 /* Transaction Ledger */
@@ -137,7 +137,7 @@
 
 .ledger-title {
   font-size: 1.4rem;
-  color: #fff;
+  color: var(--text-primary);
   margin-bottom: 20px;
   font-weight: 700;
 }
@@ -185,7 +185,7 @@
 }
 
 .td-date {
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 600;
   font-size: 0.95rem;
 }
@@ -233,7 +233,7 @@
 }
 
 .payment-modal-card {
-  background: rgba(18, 24, 38, 0.95);
+  background: var(--bg-secondary);
   border: 1px solid var(--accent-cyan);
   border-radius: 20px;
   padding: 35px;
@@ -244,7 +244,7 @@
 
 .payment-modal-title {
   text-align: center;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1.5rem;
   margin-bottom: 15px;
 }
@@ -282,10 +282,10 @@
 .payment-input {
   width: 100%;
   padding: 14px 16px;
-  background: rgba(10, 14, 23, 0.8);
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1rem;
   font-family: inherit;
   box-sizing: border-box;
@@ -305,7 +305,7 @@
   margin-top: 30px;
 }
 
-.w-100 { width: 100%; }
+.payment-full-width { width: 100%; }
 
 .payment-disclaimer {
   text-align: center;

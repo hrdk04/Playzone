@@ -1,27 +1,23 @@
 import { Link, useLocation } from "react-router-dom";
-import theme from "../../theme";
+import adminTheme from "../adminTheme";
 
 const linkStyle = (active, isMobile) => ({
   display: "block",
   padding: isMobile ? "0.5rem 0.75rem" : "0.75rem 1rem",
   margin: "0.25rem 0",
   borderRadius: "8px",
-  color: active ? theme.colors.secondary : theme.colors.white,
+  color: active ? adminTheme.accent : adminTheme.textPrimary,
   textDecoration: "none",
-  background: active ? theme.colors.activeBg : "transparent",
+  background: active ? "rgba(0, 212, 170, 0.16)" : "transparent",
   borderLeft: active
-    ? `4px solid ${theme.colors.secondary}`
+    ? `4px solid ${adminTheme.accent}`
     : `4px solid transparent`,
   fontSize: isMobile ? "0.9rem" : "1rem",
   fontWeight: active ? "600" : "400",
   letterSpacing: "0.3px",
-  transition: theme.animations.transition,
-  boxShadow: active ? theme.shadows.hover : "none",
+  transition: "all 0.25s ease-in-out",
+  boxShadow: active ? adminTheme.cardShadow : "none",
   cursor: "pointer",
-  ":hover": {
-    background: `${theme.colors.primary}15`,
-    color: theme.colors.secondary,
-  },
 });
 
 const AdminSidebar = ({ isOpen, onClose, isMobile }) => {
@@ -33,9 +29,9 @@ const AdminSidebar = ({ isOpen, onClose, isMobile }) => {
     left: isMobile ? (isOpen ? "0" : "-240px") : "0",
     width: "240px",
     height: "calc(100vh - 64px)",
-    background: theme.gradients.navbar, // unified gradient
-    borderRight: theme.borders.card,
-    boxShadow: theme.shadows.card,
+    background: "linear-gradient(180deg, var(--bg-secondary), var(--bg-tertiary))",
+    borderRight: `1px solid ${adminTheme.borderLight}`,
+    boxShadow: adminTheme.cardShadow,
     padding: isMobile ? "0.75rem" : "1rem",
     overflowY: "auto",
     zIndex: 999,

@@ -20,14 +20,14 @@
 }
 
 /* Floating Back Button (Shared logic, scoped here) */
-.floating-back-btn {
+.profile-back-btn {
   position: absolute;
   top: 40px;
   right: 5%;
   padding: 10px 20px;
-  background: rgba(18, 24, 38, 0.8);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  color: #fff;
+  color: var(--text-primary);
   border-radius: 8px;
   cursor: pointer;
   z-index: 100;
@@ -36,7 +36,7 @@
   box-shadow: var(--card-shadow);
 }
 
-.floating-back-btn:hover {
+.profile-back-btn:hover {
   border-color: var(--accent-pink);
   color: var(--accent-pink);
   transform: translateY(-2px);
@@ -120,7 +120,7 @@
 .avatar-name {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .wallet-balance-box {
@@ -156,7 +156,7 @@
 
 .stats-header-title {
   font-size: 1.1rem;
-  color: #fff;
+  color: var(--text-primary);
   margin-bottom: 15px;
   text-align: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -225,7 +225,7 @@
 .form-main-heading {
   margin: 0;
   font-size: 1.5rem;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .edit-toggle-btn {
@@ -266,9 +266,9 @@
   width: 100%;
   padding: 14px 16px;
   border-radius: 8px;
-  background: rgba(10, 14, 23, 0.8);
+  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1rem;
   font-family: inherit;
   transition: var(--hover-transition);
@@ -278,19 +278,19 @@
 /* Editing States */
 .profile-input.disabled {
   opacity: 0.6;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--bg-tertiary);
   cursor: not-allowed;
 }
 
 .profile-input.strictly-disabled {
   opacity: 0.5;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--bg-tertiary);
   cursor: not-allowed;
 }
 
 .profile-input.editable {
   border-color: #6ffd65;
-  background: rgba(18, 24, 38, 0.9);
+  background: var(--bg-secondary);
   box-shadow: 0 0 10px rgba(111, 253, 101, 0.2);
 }
 
@@ -358,7 +358,7 @@
   .profile-layout-grid {
     grid-template-columns: 1fr;
   }
-  .floating-back-btn {
+  .profile-back-btn {
     position: relative;
     top: 0;
     right: 0;
@@ -369,7 +369,7 @@
 }
 
 /* Light Mode Overrides */
-[data-theme="light"] .floating-back-btn {
+[data-theme="light"] .profile-back-btn {
   background: #ffffff;
   color: #0f172a;
   border-color: #d1d5db;

@@ -85,16 +85,16 @@ const History = () => {
   }
 
   // Result badge color
-  const getResultColor = (result) => {
+  const getResultStyle = (result) => {
     switch (result.toLowerCase()) {
       case "winner":
-        return "#FFD700" // Gold
+        return { backgroundColor: "#FFD700", color: "#101828" } // Gold
       case "2nd place":
-        return "#C0C0C0" // Silver
+        return { backgroundColor: "#C0C0C0", color: "#101828" } // Silver
       case "3rd place":
-        return "#CD7F32" // Bronze
+        return { backgroundColor: "#CD7F32", color: "#ffffff" } // Bronze
       default:
-        return "var(--bg-tertiary)" // Proper theme color for participant
+        return { backgroundColor: "var(--bg-tertiary)", color: "var(--text-primary)" }
     }
   }
 
@@ -102,7 +102,7 @@ const History = () => {
     <div className="history-page-wrapper">
       <UserSideNav />
       
-      <button onClick={() => navigate(-1)} className="floating-back-btn">
+      <button onClick={() => navigate(-1)} className="history-back-btn">
         ← Back
       </button>
 
@@ -169,7 +169,7 @@ const History = () => {
                   <h3 className="history-tourney-name">{tournament.tournamentName}</h3>
                   <span
                     className="history-result-badge"
-                    style={{ backgroundColor: getResultColor(tournament.result) }}
+                    style={getResultStyle(tournament.result)}
                   >
                     {tournament.result}
                   </span>
@@ -190,7 +190,7 @@ const History = () => {
                    <div className="history-card-footer">
                      <button
                        onClick={() => navigate(`/tournaments/results/${tournament.tournamentName}`)}
-                       className="btn-primary-gaming w-100"
+                       className="btn-primary-gaming history-full-width-btn"
                      >
                        View Match Results
                      </button>

@@ -1226,12 +1226,21 @@ app.get("/admin/broadcast/templates", async (req, res) => {
 app.post("/adminLogin", async (req, res) => {
   try {
     const { emailOrUsername, password } = req.body
-    const username = emailOrUsername.replace(/_admin$/, "")
-    const admin = await Admin.findOne({ username })
+    // Support login by username (with or without _admin suffix) or by notificationEmail
+    const candidate = (emailOrUsername || "").toString().trim()
+    const usernameCandidate = candidate.replace(/_admin$/, "")
+
+    let admin = await Admin.findOne({ username: usernameCandidate })
+
+    // If not found by username, and the input looks like an email, try notificationEmail
+    if (!admin && candidate.includes("@")) {
+      admin = await Admin.findOne({ notificationEmail: candidate })
+    }
+
     if (!admin) return res.status(400).json({ msg: "Admin not found!" })
     if (admin.password !== password) return res.status(400).json({ msg: "Incorrect password!" })
 
-    res.status(200).json({ msg: "Login successful!", username: admin.username })
+    res.status(200).json({ msg: "Login successful!", username: admin.username, admin: { username: admin.username, notificationEmail: admin.notificationEmail } })
   } catch (error) {
     res.status(500).json({ msg: "Server error" })
   }
@@ -1244,69 +1253,38 @@ app.post("/admin/email/send-otp", async (req, res) => {
   try {
     const { username, email } = req.body;
     if (!username || !email) return res.status(400).json({ message: "Username and email are required" });
-    
-    const admin = await Admin.findOne({ username });
+
+    // Resolve admin by username OR by notificationEmail if an email-like username was provided
+    let admin = null
+    const candidate = username.toString()
+    if (candidate.includes("@")) {
+      admin = await Admin.findOne({ $or: [{ username: candidate }, { notificationEmail: candidate }] })
+    } else {
+      admin = await Admin.findOne({ username: candidate })
+    }
+
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
     // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Send OTP to email
-    await transporter.sendMail({
-      from: process.env.SMTP_USER,
-      to: email,
-      subject: "🎮 PLAYZONE Admin Email Verification OTP",
-      html: `
-        <div style="
-          background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-          color: #fff;
-          font-family: 'Segoe UI', Roboto, sans-serif;
-          padding: 30px;
-          border-radius: 12px;
-          text-align: center;
-          box-shadow: 0 0 25px rgba(0,0,0,0.5);
-          max-width: 500px;
-          margin: auto;
-        ">
-          <h1 style="font-size: 24px; margin-bottom: 15px; letter-spacing: 1px;">🔐 ADMIN EMAIL VERIFICATION</h1>
-          <p style="font-size: 16px; color: #c9c9c9;">Hello Admin,</p>
-          <p style="font-size: 15px; line-height: 1.6; color: #ddd;">
-            You're setting up email notifications for tournament reminders.<br/>
-            Enter the following OTP to verify your email:
-          </p>
+    // Attempt to send OTP first; only store OTP after successful send
+    try {
+      await transporter.sendMail({
+        from: process.env.SMTP_USER,
+        to: email,
+        subject: "🎮 PLAYZONE Admin Email Verification OTP",
+        html: `<div style="padding:20px;font-family:Arial,sans-serif;"><h3>Admin Email Verification</h3><p>Your OTP: <b>${otp}</b></p><p>This OTP expires in 10 minutes.</p></div>`,
+      });
 
-          <div style="
-            background: #1a1a40;
-            color: #00ffcc;
-            font-size: 32px;
-            font-weight: bold;
-            letter-spacing: 5px;
-            padding: 20px;
-            border-radius: 8px;
-            display: inline-block;
-            margin: 20px 0;
-            box-shadow: 0 0 15px #00ffcc;
-          ">
-            ${otp}
-          </div>
-
-          <p style="font-size: 14px; color: #bbb;">
-            ⚠️ This OTP will expire in <b>10 minutes</b>.<br/>
-            You'll receive tournament notifications at 24h, 2h, and 30min before tournaments start.
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #333; margin: 25px 0;">
-          <p style="font-size: 12px; color: #888;">
-            © 2025 <b>PLAYZONE eSports</b> — "Where every gamer becomes a legend."
-          </p>
-        </div>
-      `,
-    });
-
-    // Save OTP in-memory
-    otpStore[username] = { otp, email, expires: Date.now() + 10 * 60 * 1000 }; // 10 mins
-    console.log("OTP stored for:", username)
-    res.json({ message: "OTP sent to your email" });
+      // Store OTP keyed by the real admin username to avoid ambiguity
+      otpStore[admin.username] = { otp, email, expires: Date.now() + 10 * 60 * 1000 };
+      console.log("OTP stored for admin:", admin.username)
+      res.json({ message: "OTP sent to your email" });
+    } catch (mailErr) {
+      console.error("Send OTP mail error:", mailErr)
+      res.status(500).json({ message: "Failed to send OTP email. Check SMTP configuration." })
+    }
   } catch (err) {
     console.error("Send OTP error:", err);
     res.status(500).json({ message: "Failed to send OTP" });
@@ -1321,23 +1299,31 @@ app.post("/admin/email/verify-otp", async (req, res) => {
     if (!username || !otp)
       return res.status(400).json({ message: "Username and OTP required" });
 
-    const stored = otpStore[username];
-    console.log("Verifying for:", username, "Stored keys:", Object.keys(otpStore));
+    // Resolve admin similarly to send-otp
+    const candidate = username.toString()
+    let admin = null
+    if (candidate.includes("@")) {
+      admin = await Admin.findOne({ $or: [{ username: candidate }, { notificationEmail: candidate }] })
+    } else {
+      admin = await Admin.findOne({ username: candidate })
+    }
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    const stored = otpStore[admin.username];
+    console.log("Verifying for admin:", admin.username, "Stored keys:", Object.keys(otpStore));
 
     if (!stored) return res.status(400).json({ message: "No OTP found, send again" });
     if (Date.now() > stored.expires) {
-      delete otpStore[username];
+      delete otpStore[admin.username];
       return res.status(400).json({ message: "OTP expired" });
     }
     if (stored.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
 
-    const admin = await Admin.findOne({ username });
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
-
+    // Apply verified email (do not overwrite if somehow different admin)
     admin.notificationEmail = stored.email;
     admin.isEmailVerified = true;
     await admin.save();
-    delete otpStore[username];
+    delete otpStore[admin.username];
 
     res.json({ message: "Email verified successfully!" });
   } catch (err) {
@@ -1398,13 +1384,10 @@ app.put("/admin/profile", async (req, res) => {
     const admin = await Admin.findOne({ username });
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-    // Update notification email if provided
+    // Do not allow direct notificationEmail updates via this endpoint.
+    // Email must be changed using the OTP verification flow (/admin/email/send-otp -> /admin/email/verify-otp)
     if (notificationEmail !== undefined) {
-      admin.notificationEmail = notificationEmail;
-      // Reset verification status when email changes
-      if (notificationEmail !== admin.notificationEmail) {
-        admin.isEmailVerified = false;
-      }
+      return res.status(400).json({ message: "To change notification email use the OTP verification flow: POST /admin/email/send-otp then POST /admin/email/verify-otp" });
     }
 
     await admin.save();
@@ -1447,6 +1430,65 @@ app.put("/admin/change-password", async (req, res) => {
     res.json({ message: "Password updated successfully" });
   } catch (err) {
     console.error("Change password error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// ---------------- Admin password reset via email OTP ----------------
+app.post("/admin/password/send-otp", async (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ message: "Username required" });
+
+    const admin = await Admin.findOne({ username });
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    if (!admin.notificationEmail) {
+      return res.status(400).json({ message: "No notification email set for this admin. Set and verify an email first." });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const key = `admin-forgot-${username}`;
+    otpStore[key] = { otp, email: admin.notificationEmail, expires: Date.now() + 10 * 60 * 1000 };
+
+    await transporter.sendMail({
+      from: process.env.SMTP_USER,
+      to: admin.notificationEmail,
+      subject: "🎮 PLAYZONE Admin Password Reset OTP",
+      html: `<div style="padding:20px;font-family:Arial,sans-serif;"><h3>Admin Password Reset</h3><p>Your OTP: <b>${otp}</b></p><p>This OTP expires in 10 minutes.</p></div>`,
+    });
+
+    res.json({ message: "Password reset OTP sent to admin email" });
+  } catch (err) {
+    console.error("Admin password OTP send error:", err);
+    res.status(500).json({ message: "Failed to send OTP" });
+  }
+});
+
+app.post("/admin/password/reset", async (req, res) => {
+  try {
+    const { username, otp, newPassword } = req.body;
+    if (!username || !otp || !newPassword) return res.status(400).json({ message: "username, otp and newPassword are required" });
+
+    const key = `admin-forgot-${username}`;
+    const record = otpStore[key];
+    if (!record) return res.status(400).json({ message: "OTP not found or expired" });
+    if (Date.now() > record.expires) {
+      delete otpStore[key];
+      return res.status(400).json({ message: "OTP expired" });
+    }
+    if (record.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
+
+    const admin = await Admin.findOne({ username });
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    admin.password = newPassword;
+    await admin.save();
+    delete otpStore[key];
+
+    res.json({ message: "Password reset successfully" });
+  } catch (err) {
+    console.error("Admin password reset error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 });

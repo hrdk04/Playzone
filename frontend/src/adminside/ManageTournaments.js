@@ -375,7 +375,7 @@ const status = ["running", "in-progress", "ongoing"].includes(statusRaw)
             <div
               key={i}
               style={{
-                background: "#131313",
+                background: "var(--bg-tertiary)",
                 borderRadius: 8,
                 height: 240,
                 animation: "pulse 1.2s ease-in-out infinite",
@@ -424,25 +424,25 @@ const status = ["running", "in-progress", "ongoing"].includes(statusRaw)
           <div
             style={{
               width: "min(820px, 92vw)",
-              background: "#101010",
+              background: "var(--bg-secondary)",
               borderRadius: 12,
               boxShadow: theme.shadows.buttonShadow,
               padding: 16,
-              color: "#fff",
+              color: "var(--text-primary)",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h3 style={{ margin: 0 }}>{selectedTournament.name}</h3>
               <Button onClick={() => setShowStartModal(false)}>Close</Button>
             </div>
-            <p style={{ marginTop: 0, color: "#c8c8c8", fontSize: 14 }}>
+            <p style={{ marginTop: 0, color: "var(--text-secondary)", fontSize: 14 }}>
               {formatDate(selectedTournament.date)} • {formatTime(selectedTournament.time)}
             </p>
 
             {/* Single Credentials form ONLY */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
               <div>
-                <label style={{ display: "block", marginBottom: 6, color: "#ddd" }}>Room ID</label>
+                <label style={{ display: "block", marginBottom: 6, color: "var(--text-secondary)" }}>Room ID</label>
                 <input
                   value={roomId}
                   onChange={(e) => setRoomId(e.target.value)}
@@ -451,14 +451,14 @@ const status = ["running", "in-progress", "ongoing"].includes(statusRaw)
                     width: "100%",
                     padding: "10px 12px",
                     borderRadius: 8,
-                    border: "1px solid #2a2a2a",
-                    background: "#0f0f0f",
-                    color: "#fff",
+                    border: "1px solid var(--border-color)",
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)",
                   }}
                 />
               </div>
               <div>
-                <label style={{ display: "block", marginBottom: 6, color: "#ddd" }}>Password</label>
+                <label style={{ display: "block", marginBottom: 6, color: "var(--text-secondary)" }}>Password</label>
                 <input
                   value={roomPass}
                   onChange={(e) => setRoomPass(e.target.value)}
@@ -467,9 +467,9 @@ const status = ["running", "in-progress", "ongoing"].includes(statusRaw)
                     width: "100%",
                     padding: "10px 12px",
                     borderRadius: 8,
-                    border: "1px solid #2a2a2a",
-                    background: "#0f0f0f",
-                    color: "#fff",
+                    border: "1px solid var(--border-color)",
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)",
                   }}
                 />
               </div>
@@ -482,22 +482,22 @@ const status = ["running", "in-progress", "ongoing"].includes(statusRaw)
                 style={{
                   maxHeight: 260,
                   overflow: "auto",
-                  border: "1px solid #1f1f1f",
+                  border: "1px solid var(--border-color)",
                   borderRadius: 8,
                   padding: 8,
-                  background: "#0b0b0b",
+                  background: "var(--bg-secondary)",
                 }}
               >
                 {selectedParts.length ? (
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                     <thead>
-                      <tr style={{ textAlign: "left", color: "#bdbdbd" }}>
-                        <th style={{ padding: "8px 6px", borderBottom: "1px solid #222" }}>#</th>
-                        <th style={{ padding: "8px 6px", borderBottom: "1px solid #222" }}>Full Name / Username</th>
-                        <th style={{ padding: "8px 6px", borderBottom: "1px solid #222" }}>Team</th>
-                        <th style={{ padding: "8px 6px", borderBottom: "1px solid #222" }}>Email</th>
-                        <th style={{ padding: "8px 6px", borderBottom: "1px solid #222" }}>Status</th>
-                        <th style={{ padding: "8px 6px", borderBottom: "1px solid #222" }}>Action</th>
+                      <tr style={{ textAlign: "left", color: "var(--text-secondary)" }}>
+                        <th style={{ padding: "8px 6px", borderBottom: "1px solid var(--border-color)" }}>#</th>
+                        <th style={{ padding: "8px 6px", borderBottom: "1px solid var(--border-color)" }}>Full Name / Username</th>
+                        <th style={{ padding: "8px 6px", borderBottom: "1px solid var(--border-color)" }}>Team</th>
+                        <th style={{ padding: "8px 6px", borderBottom: "1px solid var(--border-color)" }}>Email</th>
+                        <th style={{ padding: "8px 6px", borderBottom: "1px solid var(--border-color)" }}>Status</th>
+                        <th style={{ padding: "8px 6px", borderBottom: "1px solid var(--border-color)" }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -506,18 +506,18 @@ const status = ["running", "in-progress", "ongoing"].includes(statusRaw)
                         const status = sendStatuses[email] || "idle"
                         return (
                           <tr key={p._id || p.user_id?._id || idx}>
-                            <td style={{ padding: "8px 6px", borderBottom: "1px solid #181818" }}>{idx + 1}</td>
-                            <td style={{ padding: "8px 6px", borderBottom: "1px solid #181818" }}>
+                            <td style={{ padding: "8px 6px", borderBottom: "1px solid var(--border-light)" }}>{idx + 1}</td>
+                            <td style={{ padding: "8px 6px", borderBottom: "1px solid var(--border-light)" }}>
                               {getParticipantName(p)}
                             </td>
-                            <td style={{ padding: "8px 6px", borderBottom: "1px solid #181818" }}>
+                            <td style={{ padding: "8px 6px", borderBottom: "1px solid var(--border-light)" }}>
                               {getParticipantTeam(p)}
                             </td>
-                            <td style={{ padding: "8px 6px", borderBottom: "1px solid #181818" }}>{email}</td>
-                            <td style={{ padding: "8px 6px", borderBottom: "1px solid #181818" }}>
+                            <td style={{ padding: "8px 6px", borderBottom: "1px solid var(--border-light)" }}>{email}</td>
+                            <td style={{ padding: "8px 6px", borderBottom: "1px solid var(--border-light)" }}>
                               {status === "ok" ? "✅" : status === "error" ? "❌" : status === "pending" ? "⏳" : "—"}
                             </td>
-                            <td style={{ padding: "8px 6px", borderBottom: "1px solid #181818" }}>
+                            <td style={{ padding: "8px 6px", borderBottom: "1px solid var(--border-light)" }}>
                               <Button
                                 onClick={() => sendToOne(email)}
                                 disabled={!email || !roomId || !roomPass || status === "pending"}
@@ -531,7 +531,7 @@ const status = ["running", "in-progress", "ongoing"].includes(statusRaw)
                     </tbody>
                   </table>
                 ) : (
-                  <div style={{ color: "#bdbdbd", padding: 8 }}>No participants joined yet.</div>
+                  <div style={{ color: "var(--text-secondary)", padding: 8 }}>No participants joined yet.</div>
                 )}
               </div>
             </div>
@@ -569,12 +569,14 @@ const status = ["running", "in-progress", "ongoing"].includes(statusRaw)
 // Tournament Card Component with Countdown Timer
 const TournamentCard = ({ tournament: t, joinedCount, onStart, onUpdate, onDelete, onPublishResults, onViewResultImage, isMobile = false }) => {
   const timeLeft = useCountdown(t.date, t.time)
+  const isCompleted = t.status === "completed"
+  const [isHovered, setIsHovered] = useState(false)
   
   return (
     <div
       style={{
         position: "relative",
-        height: isMobile ? 240 : 280,
+        minHeight: isMobile ? 260 : 280,
         borderRadius: 14,
         overflow: "hidden",
         backgroundImage: `url(${t.thumbnail || gameThumbs[t.game] || gameThumbs.bgmi})`,
@@ -582,6 +584,8 @@ const TournamentCard = ({ tournament: t, joinedCount, onStart, onUpdate, onDelet
         backgroundPosition: "center",
         boxShadow: theme.shadows.buttonShadow,
       }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Dark gradient overlay */}
       <div
@@ -601,11 +605,32 @@ const TournamentCard = ({ tournament: t, joinedCount, onStart, onUpdate, onDelet
           left: 14,
           right: 14,
           display: "flex",
-          alignItems: "flex-start",
-          gap: 12,
+          alignItems: isMobile ? "flex-start" : "flex-start",
+          gap: isMobile ? 10 : 12,
+          flexDirection: isMobile ? "column" : "row",
         }}
       >
-        <div style={{ color: "#fff", maxWidth: isMobile ? "70%" : "65%" }}>
+        <div style={{ color: "#fff", maxWidth: "100%", width: "100%" }}>
+          {isCompleted && (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 8,
+                padding: "4px 10px",
+                borderRadius: 999,
+                background: "rgba(255, 183, 0, 0.18)",
+                border: "1px solid rgba(255, 183, 0, 0.85)",
+                color: "#ffd166",
+                fontSize: isMobile ? 10 : 12,
+                fontWeight: 700,
+                letterSpacing: 0.4,
+              }}
+            >
+              Tournament Over
+            </div>
+          )}
           <h3 style={{ 
             margin: 0, 
             color: theme.colors.primary, 
@@ -672,17 +697,55 @@ const TournamentCard = ({ tournament: t, joinedCount, onStart, onUpdate, onDelet
         {/* Center pool prize */}
         <div
           style={{
-            marginLeft: "auto",
+            marginLeft: isMobile ? 0 : "auto",
+            display: "flex",
+            flexDirection: isMobile ? "row" : "row",
+            alignItems: isMobile ? "center" : "flex-end",
+            gap: isMobile ? 8 : 12,
             textAlign: "center",
-            background: theme.gradients.primaryButton,
-            padding: "10px 18px",
-            borderRadius: 10,
-            color: "#fff",
-            fontWeight: 700,
-            boxShadow: theme.shadows.buttonShadow,
+            flexWrap: isMobile ? "wrap" : "nowrap",
           }}
         >
-          Pool ₹{t.poolPrize}
+          {isCompleted && (
+            <button
+              onClick={() => onUpdate(t.id)}
+              aria-label="Edit tournament"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 24,
+                height: 24,
+                padding: 0,
+                borderRadius: "50%",
+                border: "1px solid rgba(255,255,255,0.35)",
+                background: isHovered ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.06)",
+                color: "#fff",
+                cursor: "pointer",
+                opacity: isHovered ? 1 : 0,
+                transform: isHovered ? "translate(16px, -7px) scale(1)" : "translate(8px, -5px) scale(0.92)",
+                transition: "opacity 0.2s ease, transform 0.2s ease, background 0.2s ease",
+                marginRight: isMobile ? 6 : 10,
+                flexShrink: 0,
+              }}
+            >
+              <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" focusable="false" fill="currentColor">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm2.92 2.83H5v-.92l9.06-9.06.92.92L5.92 20.08zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" />
+              </svg>
+            </button>
+          )}
+          <div
+            style={{
+              background: theme.gradients.primaryButton,
+              padding: "10px 18px",
+              borderRadius: 10,
+              color: "#fff",
+              fontWeight: 700,
+              boxShadow: theme.shadows.buttonShadow,
+            }}
+          >
+            <span style={{ whiteSpace: "nowrap" }}>Pool ₹{t.poolPrize}</span>
+          </div>
         </div>
       </div>
 
@@ -690,12 +753,12 @@ const TournamentCard = ({ tournament: t, joinedCount, onStart, onUpdate, onDelet
       <div
         style={{
           position: "absolute",
-          
           right: 14,
-          bottom: 14,
+          bottom: isMobile ? 48 : 14,
           display: "flex",
-          flexDirection: "column",
-          gap: 20,
+          flexDirection: isMobile ? "row" : "column",
+          flexWrap: isMobile ? "wrap" : "nowrap",
+          gap: isMobile ? 8 : 20,
         }}
       >
         {t.status === "completed" ? (
@@ -711,7 +774,6 @@ const TournamentCard = ({ tournament: t, joinedCount, onStart, onUpdate, onDelet
                     🏆 View Results
                   </Button>
                 )}
-                <Button onClick={() => onUpdate(t.id)}>Update</Button>
                 <Button
                   onClick={() => onDelete(t.id)}
                   style={{ background: "linear-gradient(90deg, #ff4747, #e20000)" }}
@@ -724,7 +786,6 @@ const TournamentCard = ({ tournament: t, joinedCount, onStart, onUpdate, onDelet
                 <Button kind="primary" onClick={() => onPublishResults(t.id)}>
                   Publish Results
                 </Button>
-                {/* <Button  onClick={() => onUpdate(t.id)}>Update</Button> */}
                 <Button disabled
                   onClick={() => onDelete(t.id)}
                   style={{ background: "linear-gradient(90deg, #ff4747, #e20000)" }}

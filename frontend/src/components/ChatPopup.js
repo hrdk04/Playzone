@@ -207,7 +207,7 @@ const styles = {
     fontSize: '24px',
   },
   chatIcon: {
-    color: theme.colors.white,
+    color: '#ffffff',
   },
   unreadBadge: {
     position: 'absolute',
@@ -230,22 +230,22 @@ const styles = {
     right: '20px',
     width: '350px',
     maxHeight: '400px',
-    background: theme.gradients.navbarAlt1,
+    background: 'var(--bg-secondary)',
     borderRadius: '12px',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+    boxShadow: 'var(--card-shadow-hover)',
     zIndex: 1299,
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    border: '1px solid var(--border-color)',
   },
   panelHeader: {
     padding: '15px 20px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+    borderBottom: '1px solid var(--border-color)',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   panelTitle: {
     margin: 0,
-    color: theme.colors.white,
+    color: 'var(--text-primary)',
     fontSize: '16px',
     fontWeight: 'bold',
   },
@@ -256,7 +256,7 @@ const styles = {
   clearButton: {
     background: 'transparent',
     border: 'none',
-    color: theme.colors.lightGray,
+    color: 'var(--text-muted)',
     cursor: 'pointer',
     fontSize: '14px',
     padding: '5px',
@@ -264,7 +264,7 @@ const styles = {
   closeButton: {
     background: 'transparent',
     border: 'none',
-    color: theme.colors.lightGray,
+    color: 'var(--text-muted)',
     cursor: 'pointer',
     fontSize: '16px',
     padding: '5px',
@@ -276,11 +276,11 @@ const styles = {
   emptyState: {
     padding: '30px 20px',
     textAlign: 'center',
-    color: theme.colors.lightGray,
+    color: 'var(--text-muted)',
   },
   notificationItem: {
     padding: '15px 20px',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+    borderBottom: '1px solid var(--border-light)',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
@@ -292,12 +292,12 @@ const styles = {
   },
   notificationMessage: {
     margin: 0,
-    color: theme.colors.white,
+    color: 'var(--text-primary)',
     fontSize: '14px',
     lineHeight: '1.4',
   },
   notificationTime: {
-    color: theme.colors.lightGray,
+    color: 'var(--text-muted)',
     fontSize: '12px',
   },
   notificationIcon: {
@@ -305,7 +305,7 @@ const styles = {
   },
   panelFooter: {
     padding: '15px 20px',
-    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+    borderTop: '1px solid var(--border-color)',
   },
 };
 

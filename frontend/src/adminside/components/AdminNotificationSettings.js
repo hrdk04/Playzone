@@ -23,14 +23,41 @@ const AdminProfile = ({ username, isMobile = false }) => {
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [changingPassword, setChangingPassword] = useState(false)
+  // Forgot-password via email OTP states
+  const [forgotOtp, setForgotOtp] = useState("")
+  const [forgotOtpSent, setForgotOtpSent] = useState(false)
+  const [forgotResendCooldown, setForgotResendCooldown] = useState(0)
+  const [forgotNewPassword, setForgotNewPassword] = useState("")
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("")
 
   // Fetch admin profile
+  // Normalize username prop (it may be a JSON string or object)
+  const resolveUsername = () => {
+    if (!username) return null
+    try {
+      if (typeof username === "string") {
+        const trimmed = username.trim()
+        if (trimmed.startsWith("{")) {
+          const parsed = JSON.parse(trimmed)
+          return parsed?.username || null
+        }
+        return trimmed
+      }
+      if (typeof username === "object") return username.username || null
+      return String(username)
+    } catch (e) {
+      return null
+    }
+  }
+
+  const resolvedUsername = resolveUsername()
+
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!username) return
+      if (!resolvedUsername) return
       try {
         const { data } = await axios.get(
-          `${API_BASE_URL}/admin/profile?username=${encodeURIComponent(username)}`
+          `${API_BASE_URL}/admin/profile?username=${encodeURIComponent(resolvedUsername)}`
         )
         setProfile(data)
         setEmail(data.notificationEmail || "")
@@ -43,7 +70,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
       }
     }
     fetchProfile()
-  }, [username])
+  }, [resolvedUsername])
 
   // OTP cooldown timer
   useEffect(() => {
@@ -53,6 +80,15 @@ const AdminProfile = ({ username, isMobile = false }) => {
     }
     return () => clearInterval(timer)
   }, [resendCooldown])
+
+  // Forgot-password OTP cooldown timer
+  useEffect(() => {
+    let timer
+    if (forgotResendCooldown > 0) {
+      timer = setInterval(() => setForgotResendCooldown((prev) => prev - 1), 1000)
+    }
+    return () => clearInterval(timer)
+  }, [forgotResendCooldown])
 
   // Notification handlers
   const handleSendOtp = async () => {
@@ -64,7 +100,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
     try {
       await axios.post(
         `${API_BASE_URL}/admin/email/send-otp`,
-        { username, email },
+        { username: resolvedUsername, email },
         { headers: { "Content-Type": "application/json" } }
       )
       setOtpSent(true)
@@ -82,7 +118,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
     try {
       await axios.post(
         `${API_BASE_URL}/admin/email/verify-otp`,
-        { username, otp },
+        { username: resolvedUsername, otp },
         { headers: { "Content-Type": "application/json" } }
       )
       setNotificationStatus("verified")
@@ -90,7 +126,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
       toast.success("Email verified! You will now receive tournament notifications.")
       // Refresh profile data
       const { data } = await axios.get(
-        `${API_BASE_URL}/admin/profile?username=${encodeURIComponent(username)}`
+        `${API_BASE_URL}/admin/profile?username=${encodeURIComponent(resolvedUsername)}`
       )
       setProfile(data)
     } catch (err) {
@@ -122,7 +158,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
     try {
       await axios.put(
         `${API_BASE_URL}/admin/change-password`,
-        { username, currentPassword, newPassword },
+        { username: resolvedUsername, currentPassword, newPassword },
         { headers: { "Content-Type": "application/json" } }
       )
       toast.success("Password updated successfully")
@@ -137,9 +173,40 @@ const AdminProfile = ({ username, isMobile = false }) => {
     }
   }
 
+  // Forgot password via email OTP
+  const handleSendPasswordOtp = async () => {
+    try {
+      if (!resolvedUsername) return toast.error("Admin username missing")
+      const res = await axios.post(`${API_BASE_URL}/admin/password/send-otp`, { username: resolvedUsername })
+      setForgotOtpSent(true)
+      setForgotResendCooldown(30)
+      toast.success(res.data?.message || "OTP sent to admin email")
+    } catch (err) {
+      console.error("Send password OTP error:", err)
+      toast.error(err?.response?.data?.message || "Failed to send password OTP")
+    }
+  }
+
+  const handleResetPasswordWithOtp = async () => {
+    if (!forgotOtp || !forgotNewPassword || !forgotConfirmPassword) return toast.error("All fields are required")
+    if (forgotNewPassword !== forgotConfirmPassword) return toast.error("Passwords do not match")
+    if (forgotNewPassword.length < 6) return toast.error("Password must be at least 6 characters")
+    try {
+      await axios.post(`${API_BASE_URL}/admin/password/reset`, { username: resolvedUsername, otp: forgotOtp, newPassword: forgotNewPassword })
+      toast.success("Password reset successfully. You can now login with the new password.")
+      setForgotOtp("")
+      setForgotNewPassword("")
+      setForgotConfirmPassword("")
+      setForgotOtpSent(false)
+    } catch (err) {
+      console.error("Reset password error:", err)
+      toast.error(err?.response?.data?.message || "Failed to reset password")
+    }
+  }
+
   if (loading) {
     return (
-      <div style={{ padding: "2rem", textAlign: "center", color: theme.colors.white }}>
+      <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-primary)" }}>
         <p>Loading profile...</p>
       </div>
     )
@@ -148,7 +215,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
   return (
     <div style={{ 
       padding: isMobile ? "1rem" : "2rem", 
-      color: theme.colors.white, 
+      color: "var(--text-primary)", 
       fontFamily: theme.fonts.primary 
     }}>
       <Toaster position="top-right" reverseOrder={false} />
@@ -232,9 +299,9 @@ const AdminProfile = ({ username, isMobile = false }) => {
                   width: "100%",
                   padding: "0.75rem",
                   borderRadius: "6px",
-                  border: "1px solid #333",
-                  background: "#1a1a1a",
-                  color: theme.colors.white,
+                  border: "1px solid var(--border-color)",
+                  background: "var(--bg-tertiary)",
+                  color: "var(--text-primary)",
                   cursor: "not-allowed"
                 }}
               />
@@ -252,9 +319,9 @@ const AdminProfile = ({ username, isMobile = false }) => {
                   width: "100%",
                   padding: "0.75rem",
                   borderRadius: "6px",
-                  border: "1px solid #333",
-                  background: "#1a1a1a",
-                  color: theme.colors.white,
+                  border: "1px solid var(--border-color)",
+                  background: "var(--bg-tertiary)",
+                  color: "var(--text-primary)",
                   cursor: "not-allowed"
                 }}
               />
@@ -264,40 +331,56 @@ const AdminProfile = ({ username, isMobile = false }) => {
               <label style={{ display: "block", marginBottom: "0.5rem", color: theme.colors.lightGray }}>
                 Account Created
               </label>
-              <input
-                type="text"
-                value={profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : ""}
-                disabled
-                style={{
-                  width: "100%",
-                  padding: "0.75rem",
-                  borderRadius: "6px",
-                  border: "1px solid #333",
-                  background: "#1a1a1a",
-                  color: theme.colors.white,
-                  cursor: "not-allowed"
-                }}
-              />
+              {
+                (() => {
+                  const created = profile?.createdAt ? new Date(profile.createdAt) : null
+                  const createdVal = created && !isNaN(created.getTime()) ? created.toLocaleString() : ""
+                  return (
+                    <input
+                      type="text"
+                      value={createdVal}
+                      disabled
+                      style={{
+                        width: "100%",
+                        padding: "0.75rem",
+                        borderRadius: "6px",
+                        border: "1px solid var(--border-color)",
+                        background: "var(--bg-tertiary)",
+                        color: "var(--text-primary)",
+                        cursor: "not-allowed"
+                      }}
+                    />
+                  )
+                })()
+              }
             </div>
 
             <div>
               <label style={{ display: "block", marginBottom: "0.5rem", color: theme.colors.lightGray }}>
                 Last Updated
               </label>
-              <input
-                type="text"
-                value={profile?.updatedAt ? new Date(profile.updatedAt).toLocaleDateString() : ""}
-                disabled
-                style={{
-                  width: "100%",
-                  padding: "0.75rem",
-                  borderRadius: "6px",
-                  border: "1px solid #333",
-                  background: "#1a1a1a",
-                  color: theme.colors.white,
-                  cursor: "not-allowed"
-                }}
-              />
+              {
+                (() => {
+                  const updated = profile?.updatedAt ? new Date(profile.updatedAt) : null
+                  const updatedVal = updated && !isNaN(updated.getTime()) ? updated.toLocaleString() : ""
+                  return (
+                    <input
+                      type="text"
+                      value={updatedVal}
+                      disabled
+                      style={{
+                        width: "100%",
+                        padding: "0.75rem",
+                        borderRadius: "6px",
+                        border: "1px solid var(--border-color)",
+                        background: "var(--bg-tertiary)",
+                        color: "var(--text-primary)",
+                        cursor: "not-allowed"
+                      }}
+                    />
+                  )
+                })()
+              }
             </div>
           </div>
         </div>
@@ -336,9 +419,9 @@ const AdminProfile = ({ username, isMobile = false }) => {
                     width: "100%",
                     padding: "0.75rem",
                     borderRadius: "6px",
-                    border: "1px solid #333",
-                    background: "#1a1a1a",
-                    color: theme.colors.white
+                    border: "1px solid var(--border-color)",
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)"
                   }}
                   placeholder="Enter your email"
                 />
@@ -364,7 +447,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
           {notificationStatus === "pending" && otpSent && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <p style={{ color: theme.colors.lightGray }}>
-                Email: <strong style={{ color: theme.colors.white }}>{email}</strong>
+                Email: <strong style={{ color: "var(--text-primary)" }}>{email}</strong>
               </p>
               <div>
                 <label style={{ display: "block", marginBottom: "0.5rem", color: theme.colors.lightGray }}>
@@ -378,9 +461,9 @@ const AdminProfile = ({ username, isMobile = false }) => {
                     width: "100%",
                     padding: "0.75rem",
                     borderRadius: "6px",
-                    border: "1px solid #333",
-                    background: "#1a1a1a",
-                    color: theme.colors.white
+                    border: "1px solid var(--border-color)",
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)"
                   }}
                   placeholder="Enter OTP"
                 />
@@ -463,9 +546,9 @@ const AdminProfile = ({ username, isMobile = false }) => {
                   width: "100%",
                   padding: "0.75rem",
                   borderRadius: "6px",
-                  border: "1px solid #333",
-                  background: "#1a1a1a",
-                  color: theme.colors.white
+                    border: "1px solid var(--border-color)",
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)"
                 }}
                 placeholder="Enter current password"
               />
@@ -483,9 +566,9 @@ const AdminProfile = ({ username, isMobile = false }) => {
                   width: "100%",
                   padding: "0.75rem",
                   borderRadius: "6px",
-                  border: "1px solid #333",
-                  background: "#1a1a1a",
-                  color: theme.colors.white
+                    border: "1px solid var(--border-color)",
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)"
                 }}
                 placeholder="Enter new password"
               />
@@ -503,9 +586,9 @@ const AdminProfile = ({ username, isMobile = false }) => {
                   width: "100%",
                   padding: "0.75rem",
                   borderRadius: "6px",
-                  border: "1px solid #333",
-                  background: "#1a1a1a",
-                  color: theme.colors.white
+                    border: "1px solid var(--border-color)",
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)"
                 }}
                 placeholder="Confirm new password"
               />
@@ -528,6 +611,31 @@ const AdminProfile = ({ username, isMobile = false }) => {
             >
               {changingPassword ? "Updating..." : "Update Password"}
             </button>
+          </div>
+          {/* Forgot password via email OTP */}
+          <div style={{ marginTop: "1.5rem", borderTop: `1px dashed ${theme.colors.primary}`, paddingTop: "1rem" }}>
+            <h3 style={{ color: theme.colors.secondary }}>Forgot Password (Email OTP)</h3>
+            <p style={{ color: theme.colors.lightGray }}>Sends an OTP to your verified notification email to reset the admin password.</p>
+            <p style={{ color: theme.colors.lightGray }}>Email: <strong>{profile?.notificationEmail || "Not set"}</strong></p>
+            {!forgotOtpSent && (
+              <div style={{ display: "flex", gap: "1rem", marginTop: "0.5rem" }}>
+                <button onClick={handleSendPasswordOtp} style={{ padding: "0.5rem 1rem", background: theme.colors.primary, color: "#fff", border: "none", borderRadius: "6px" }}>
+                  Send OTP to Email
+                </button>
+              </div>
+            )}
+
+            {forgotOtpSent && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "0.75rem" }}>
+                <input type="text" placeholder="Enter OTP" value={forgotOtp} onChange={(e) => setForgotOtp(e.target.value)} style={{ padding: "0.5rem", borderRadius: "6px" }} />
+                <input type="password" placeholder="New password" value={forgotNewPassword} onChange={(e) => setForgotNewPassword(e.target.value)} style={{ padding: "0.5rem", borderRadius: "6px" }} />
+                <input type="password" placeholder="Confirm new password" value={forgotConfirmPassword} onChange={(e) => setForgotConfirmPassword(e.target.value)} style={{ padding: "0.5rem", borderRadius: "6px" }} />
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button onClick={handleResetPasswordWithOtp} style={{ padding: "0.5rem 1rem", background: theme.colors.secondary, color: "#fff", border: "none", borderRadius: "6px" }}>Reset Password</button>
+                  <button onClick={() => { if (forgotResendCooldown === 0) { handleSendPasswordOtp() } }} disabled={forgotResendCooldown > 0} style={{ padding: "0.5rem 1rem", background: theme.colors.primary, color: "#fff", border: "none", borderRadius: "6px" }}>{forgotResendCooldown > 0 ? `Resend in ${forgotResendCooldown}s` : "Resend OTP"}</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

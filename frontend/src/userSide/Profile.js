@@ -91,7 +91,7 @@ export default function Profile() {
     <div className="profile-page-wrapper">
       <div className="profile-header-top">
         <UserSideNav />
-        <button onClick={handleBack} className="floating-back-btn">
+        <button onClick={handleBack} className="profile-back-btn">
           ← Back
         </button>
       </div>

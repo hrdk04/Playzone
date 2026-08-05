@@ -144,9 +144,9 @@ const TournamentStart = () => {
             style={{
               padding: 10,
               borderRadius: 8,
-              background: "#0f0f0f",
-              color: "#fff",
-              border: "1px solid #444",
+              background: "var(--bg-secondary)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border-color)",
               minWidth: 220,
             }}
           />
@@ -157,9 +157,9 @@ const TournamentStart = () => {
             style={{
               padding: 10,
               borderRadius: 8,
-              background: "#0f0f0f",
-              color: "#fff",
-              border: "1px solid #444",
+              background: "var(--bg-secondary)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border-color)",
               minWidth: 220,
             }}
           />
@@ -231,7 +231,7 @@ const TournamentStart = () => {
               </tr>
             ) : populatedParticipants.length ? (
               populatedParticipants.map((p) => (
-                <tr key={p.id} style={{ borderBottom: "1px solid #333" }}>
+                <tr key={p.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
                   <td style={{ padding: 10 }}>{p.team_name}</td>
                   <td style={{ padding: 10 }}>{p.name}</td>
                   <td style={{ padding: 10 }}>{p.username}</td>

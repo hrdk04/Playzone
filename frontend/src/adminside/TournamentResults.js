@@ -266,8 +266,8 @@ const TournamentResults = () => {
                   padding: "10px 12px",
                   borderRadius: "8px",
                   border: `1px solid ${theme.colors.primary}`,
-                  background: "#0f0f0f",
-                  color: "#fff",
+                  background: "var(--bg-secondary)",
+                  color: "var(--text-primary)",
                   cursor: published ? "not-allowed" : "pointer",
                   opacity: published ? 0.6 : 1,
                 }}
@@ -295,8 +295,8 @@ const TournamentResults = () => {
                   padding: "10px 12px",
                   borderRadius: "8px",
                   border: `1px solid ${theme.colors.primary}`,
-                  background: "#0f0f0f",
-                  color: "#fff",
+                  background: "var(--bg-secondary)",
+                  color: "var(--text-primary)",
                   cursor: published ? "not-allowed" : "pointer",
                   opacity: published ? 0.6 : 1,
                 }}
@@ -324,8 +324,8 @@ const TournamentResults = () => {
                   padding: "10px 12px",
                   borderRadius: "8px",
                   border: `1px solid ${theme.colors.primary}`,
-                  background: "#0f0f0f",
-                  color: "#fff",
+                  background: "var(--bg-secondary)",
+                  color: "var(--text-primary)",
                   cursor: published ? "not-allowed" : "pointer",
                   opacity: published ? 0.6 : 1,
                 }}
@@ -396,8 +396,8 @@ const TournamentResults = () => {
                 padding: "10px",
                 borderRadius: "8px",
                 border: `1px solid ${theme.colors.primary}`,
-                background: "#0f0f0f",
-                color: theme.colors.white,
+                background: "var(--bg-secondary)",
+                color: "var(--text-primary)",
                 marginBottom: "8px"
               }}
             />

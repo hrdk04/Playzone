@@ -27,9 +27,9 @@ const GAME_MAPS = {
 const fieldStyle = {
   padding: "10px",
   borderRadius: "8px",
-  border: "1px solid #444",
-  background: "#0f0f0f",
-  color: "#fff",
+  border: "1px solid var(--border-color)",
+  background: "var(--bg-secondary)",
+  color: "var(--text-primary)",
   width: "100%",
 }
 
@@ -41,10 +41,10 @@ const groupStyle = {
 
 const infoBoxStyle = {
   padding: "12px",
-  background: "#111",
+  background: "var(--bg-secondary)",
   borderRadius: "8px",
   marginTop: "10px",
-  color: "#fff",
+  color: "var(--text-primary)",
   fontSize: "0.9rem",
 }
 
@@ -287,7 +287,7 @@ const TournamentForm = ({ mode = "create" }) => {
               value={form.t_id}
               readOnly
               disabled
-              style={{ ...fieldStyle, background: "#1a1a1a", color: "#888" }}
+              style={{ ...fieldStyle, background: "var(--bg-tertiary)", color: "var(--text-muted)" }}
             />
           </div>
           
@@ -673,14 +673,13 @@ const TournamentForm = ({ mode = "create" }) => {
           </div>
           <div>
             <label>Status</label>
-            <input
-              value={form.t_status}
-              readOnly
-              disabled
-              style={{ ...fieldStyle, background: "#1a1a1a", color: "#888" }}
-            />
+            <select name="t_status" value={form.t_status} onChange={handleChange} style={fieldStyle}>
+              <option value="pending">Pending</option>
+              <option value="running">Running</option>
+              <option value="completed">Completed</option>
+            </select>
             <small style={{ color: theme.colors.lightGray, fontSize: '0.8rem' }}>
-              Auto-managed by system
+              Editable for manual testing
             </small>
           </div>
         </div>

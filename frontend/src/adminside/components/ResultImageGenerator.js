@@ -207,7 +207,7 @@ const ResultImageGenerator = ({ tournament, winners, onClose, uploadedImagePath 
                 display: "flex",
                 gap: "10px",
                 marginBottom: "16px",
-                background: "rgba(0,0,0,0.3)",
+                background: "var(--bg-tertiary)",
                 padding: "8px",
                 borderRadius: "8px",
               }}
@@ -220,8 +220,8 @@ const ResultImageGenerator = ({ tournament, winners, onClose, uploadedImagePath 
                   border: "none",
                   background: !showUploaded
                     ? theme.gradients.primaryButton
-                    : "rgba(255,255,255,0.1)",
-                  color: theme.colors.white,
+                    : "var(--bg-tertiary)",
+                  color: "var(--text-primary)",
                   cursor: "pointer",
                 }}
               >
@@ -235,8 +235,8 @@ const ResultImageGenerator = ({ tournament, winners, onClose, uploadedImagePath 
                   border: "none",
                   background: showUploaded
                     ? theme.gradients.primaryButton
-                    : "rgba(255,255,255,0.1)",
-                  color: theme.colors.white,
+                    : "var(--bg-tertiary)",
+                  color: "var(--text-primary)",
                   cursor: "pointer",
                 }}
               >
@@ -255,7 +255,7 @@ const ResultImageGenerator = ({ tournament, winners, onClose, uploadedImagePath 
           >
             {showUploaded && uploadedImagePath ? (
               <>
-                <h4 style={{ color: theme.colors.white, marginBottom: "12px" }}>
+                <h4 style={{ color: "var(--text-primary)", marginBottom: "12px" }}>
                   Uploaded Result Image:
                 </h4>
                 <img
@@ -271,7 +271,7 @@ const ResultImageGenerator = ({ tournament, winners, onClose, uploadedImagePath 
               </>
             ) : (
               <>
-                <h4 style={{ color: theme.colors.white, marginBottom: "12px" }}>
+                <h4 style={{ color: "var(--text-primary)", marginBottom: "12px" }}>
                   Generated Result Image:
                 </h4>
                 <img

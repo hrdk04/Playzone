@@ -30,7 +30,7 @@
 }
 
 /* Floating Back Button (Reused style logic but scoped nicely) */
-.floating-back-btn {
+.history-back-btn {
   position: absolute;
   top: 90px;
   right: 5%;
@@ -46,7 +46,7 @@
   box-shadow: var(--card-shadow);
 }
 
-.floating-back-btn:hover {
+.history-back-btn:hover {
   border-color: var(--accent-pink);
   color: var(--accent-pink);
   transform: translateY(-2px);
@@ -139,7 +139,7 @@
   align-items: flex-start;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .history-tourney-name {
@@ -155,7 +155,6 @@
 .history-result-badge {
   padding: 6px 14px;
   border-radius: 20px;
-  color: #000;
   font-size: 0.8rem;
   font-weight: 800;
   letter-spacing: 0.5px;
@@ -203,8 +202,7 @@
   padding-top: 20px;
 }
 
-/* The w-100 utility for the button */
-.w-100 {
+.history-full-width-btn {
   width: 100%;
 }
 
@@ -226,5 +224,5 @@
 @media (max-width: 768px) {
   .history-page-title { font-size: 2rem; margin-top: 20px; }
   .history-filters-container { grid-template-columns: 1fr; }
-  .floating-back-btn { position: relative; top: 0; right: 0; margin-bottom: 20px; display: inline-block; }
+  .history-back-btn { position: relative; top: 0; right: 0; margin-bottom: 20px; display: inline-block; }
 }

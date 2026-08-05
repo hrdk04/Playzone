@@ -4,7 +4,7 @@ import AdminNavbar from "./components/AdminNavbar";
 import AdminDashboard from "./AdminDashboard";
 import AdminTournaments from "./ManageTournaments";
 import AdminPlayers from "./ManagePlayers";
-import theme from "../theme";
+import adminTheme from "./adminTheme";
 import AdminSidebar from "./components/AdminSidebar";
 import TournamentStart from "./TournamentStart";
 import TournamentForm from "./TournamentForm";
@@ -17,6 +17,20 @@ import API_BASE_URL from "../config/apiConfig";
 const AdminLayout = () => {
   const isAdminLoggedIn = localStorage.getItem("admin");
 
+  // Resolve admin username string from stored `adminName` (preferred) or `admin` object
+  const rawAdmin = localStorage.getItem("admin");
+  let adminUsername = localStorage.getItem("adminName") || null;
+  if (!adminUsername) {
+    try {
+      if (rawAdmin) {
+        const parsed = JSON.parse(rawAdmin);
+        if (parsed?.username && !parsed.username.includes("@")) adminUsername = parsed.username
+        else if (typeof rawAdmin === "string" && !rawAdmin.includes("@")) adminUsername = rawAdmin
+      }
+    } catch (e) {
+      if (rawAdmin && !rawAdmin.includes("@")) adminUsername = rawAdmin
+    }
+  }
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
 
@@ -28,7 +42,10 @@ const AdminLayout = () => {
 
   const isMobile = screenWidth <= 768;
   const isTablet = screenWidth > 768 && screenWidth <= 1024;
-  const sidebarWidth = 240;
+  const isLaptop = screenWidth > 1024 && screenWidth <= 1440;
+  const sidebarWidth = isTablet ? 200 : 240;
+  const mainPadding = isMobile ? "0.75rem" : isTablet ? "1.25rem" : isLaptop ? "1.5rem" : "2rem";
+  const mainPaddingTop = isMobile ? "calc(64px + 0.75rem)" : "calc(64px + 1.5rem)";
 
   if (!isAdminLoggedIn) return <Navigate to="/login" />;
 
@@ -38,9 +55,9 @@ const AdminLayout = () => {
         display: "flex",
         minHeight: "100vh",
         overflowX: "hidden", // prevent horizontal scroll
-        background: theme.gradients.homeBackground,
-        color: theme.colors.white,
-        fontFamily: theme.fonts.primary,
+        background: adminTheme.pageBg,
+        color: adminTheme.textPrimary,
+        fontFamily: "'Rajdhani', 'Poppins', sans-serif",
       }}
     >
       {/* Sidebar */}
@@ -61,7 +78,7 @@ const AdminLayout = () => {
             right: 0,
             bottom: 0,
             zIndex: 998,
-            background: "rgba(0,0,0,0.5)",
+            background: "rgba(0,0,0,0.35)",
             backdropFilter: "blur(3px)",
           }}
         />
@@ -88,17 +105,17 @@ const AdminLayout = () => {
         <main
           style={{
             flex: 1,
-            padding: isMobile ? "1rem" : isTablet ? "1.5rem" : "2rem",
-            paddingTop: isMobile ? "calc(64px + 1rem)" : "calc(64px + 2rem)",
+            padding: mainPadding,
+            paddingTop: mainPaddingTop,
             width: "100%",
             maxWidth: "100%", // prevent overflow
             boxSizing: "border-box",
             background:
-              "radial-gradient(circle at 50% 0%, rgba(13,13,13,0.95), rgba(7,7,7,0.98))",
-            boxShadow: "inset 0 0 40px rgba(255,0,128,0.1)",
-            borderTop: "1px solid rgba(255,0,128,0.1)",
-            borderLeft: "1px solid rgba(0,255,224,0.05)",
-            borderRight: "1px solid rgba(255,0,255,0.05)",
+              "radial-gradient(circle at top right, rgba(0, 212, 170, 0.08), transparent 40%), radial-gradient(circle at bottom left, rgba(255, 45, 123, 0.08), transparent 45%), var(--bg-primary)",
+            boxShadow: "inset 0 0 30px rgba(0,0,0,0.12)",
+            borderTop: `1px solid ${adminTheme.border}`,
+            borderLeft: `1px solid ${adminTheme.borderLight}`,
+            borderRight: "none",
           }}
         >
           <SWRConfig
@@ -120,7 +137,7 @@ const AdminLayout = () => {
               <Route path="tournaments/:id/start" element={<TournamentStart isMobile={isMobile || isTablet} />} />
               <Route path="tournaments/:id/results" element={<TournamentResults isMobile={isMobile || isTablet} />} />
               <Route path="players" element={<AdminPlayers isMobile={isMobile || isTablet} />} />
-              <Route path="notifications" element={<AdminProfile username={localStorage.getItem("admin")} isMobile={isMobile || isTablet} />} />
+              <Route path="notifications" element={<AdminProfile username={adminUsername} isMobile={isMobile || isTablet} />} />
             </Routes>
           </SWRConfig>
         </main>

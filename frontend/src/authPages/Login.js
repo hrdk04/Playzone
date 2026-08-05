@@ -23,40 +23,52 @@ export default function Login() {
     setLoading(true);
     
     try {
-      if (formData.emailOrUsername.endsWith("_admin")) {
-        const response = await axios.post(`${API_BASE_URL}/adminLogin`, formData);
-        const cleanUsername = formData.emailOrUsername.replace(/_admin$/, "");
-        localStorage.setItem(
-          "admin",
-          JSON.stringify(response.data.admin || { username: cleanUsername })
-        );
-        localStorage.setItem("adminName", cleanUsername);
-        window.dispatchEvent(new Event("storage"));
-        toast.success('Welcome back, Admin');
-        setTimeout(() => navigate("/admin"), 1000);
-      } else {
-        const response = await axios.post(`${API_BASE_URL}/login`, formData);
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-        localStorage.setItem("userName", response.data.user.username);
-        if (response.data.token) {
-          localStorage.setItem("token", response.data.token);
-        }
-        window.dispatchEvent(new Event("storage"));
-        toast.success('Login successful');
-        
-        // Check if user was trying to register for a tournament
-        const registerIntent = localStorage.getItem("tournament_register_intent");
-        if (registerIntent) {
-          try {
-            const intent = JSON.parse(registerIntent);
-            localStorage.removeItem("tournament_register_intent");
-            setTimeout(() => navigate(`/tournament/${intent.tournamentId}`), 1000);
-          } catch {
-            setTimeout(() => navigate("/dashboard"), 1000);
+      // Attempt admin login when input looks like an admin username (ends with _admin)
+      // or when the input is an email (admins may login with their notification email)
+      const looksLikeAdmin = formData.emailOrUsername.endsWith("_admin") || formData.emailOrUsername.includes("@");
+
+      if (looksLikeAdmin) {
+        try {
+          const response = await axios.post(`${API_BASE_URL}/adminLogin`, formData);
+          const adminObj = response.data.admin || { username: response.data.username || formData.emailOrUsername.replace(/_admin$/, "") };
+          const cleanUsername = adminObj.username || formData.emailOrUsername.replace(/_admin$/, "");
+          localStorage.setItem("admin", JSON.stringify(adminObj));
+          localStorage.setItem("adminName", cleanUsername);
+          window.dispatchEvent(new Event("storage"));
+          toast.success('Welcome back, Admin');
+          setTimeout(() => navigate("/admin"), 1000);
+          setLoading(false);
+          return;
+        } catch (adminErr) {
+          // If admin not found and user input was an email, fall back to regular user login
+          if (!formData.emailOrUsername.includes("@")) {
+            throw adminErr;
           }
-        } else {
+          // otherwise continue to try user login below
+        }
+      }
+
+      const response = await axios.post(`${API_BASE_URL}/login`, formData);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      localStorage.setItem("userName", response.data.user.username);
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+      }
+      window.dispatchEvent(new Event("storage"));
+      toast.success('Login successful');
+      
+      // Check if user was trying to register for a tournament
+      const registerIntent = localStorage.getItem("tournament_register_intent");
+      if (registerIntent) {
+        try {
+          const intent = JSON.parse(registerIntent);
+          localStorage.removeItem("tournament_register_intent");
+          setTimeout(() => navigate(`/tournament/${intent.tournamentId}`), 1000);
+        } catch {
           setTimeout(() => navigate("/dashboard"), 1000);
         }
+      } else {
+        setTimeout(() => navigate("/dashboard"), 1000);
       }
     } catch (error) {
       console.error("Login Error:", error);

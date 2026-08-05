@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import UserSideNav from "./UserSideNav"
 import axios from "axios"
 import { useLocation, useNavigate } from "react-router-dom"
@@ -20,6 +20,20 @@ export default function PaymentPage() {
   const emailOrUsername = localStorage.getItem("userName")
   const location = useLocation()
   const navigate = useNavigate()
+
+  const loadHistory = useCallback(async (userId) => {
+    if (!userId) return
+    setLoadingHistory(true)
+    try {
+      const res = await axios.get(`${API_BASE_URL}/payment/history/${userId}`)
+      const sorted = res.data.sort((a, b) => new Date(b.p_date) - new Date(a.p_date))
+      setHistory(sorted.slice(0, 20))
+    } catch (err) {
+      console.error("Error loading history", err)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }, [])
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -41,7 +55,7 @@ export default function PaymentPage() {
       }
     }
     fetchUser()
-  }, [emailOrUsername])
+  }, [emailOrUsername, loadHistory])
 
   useEffect(() => {
     const s = location.state
@@ -51,20 +65,6 @@ export default function PaymentPage() {
       setShowModal(true)
     }
   }, [location.state])
-
-  const loadHistory = async (userId = user?._id) => {
-    if (!userId) return
-    setLoadingHistory(true)
-    try {
-      const res = await axios.get(`${API_BASE_URL}/payment/history/${userId}`)
-      const sorted = res.data.sort((a, b) => new Date(b.p_date) - new Date(a.p_date))
-      setHistory(sorted.slice(0, 20))
-    } catch (err) {
-      console.error("Error loading history", err)
-    } finally {
-      setLoadingHistory(false)
-    }
-  }
 
   const openModal = (type) => {
     setModalType(type)
@@ -175,7 +175,6 @@ export default function PaymentPage() {
                 <tbody>
                   {history.slice(0, 15).map((h) => {
                     const isDebit = h.p_type === "withdraw" || h.p_type === "tournament"
-                    const isCredit = h.p_type === "deposit" || h.p_type === "refund" || h.p_type === "prize"
                     const amountClass = isDebit ? "amount-debit" : "amount-credit"
                     const amountDisplay = isDebit ? `- ₹${h.amount}` : `+ ₹${h.amount}`
                     
@@ -243,7 +242,7 @@ export default function PaymentPage() {
             <div className="payment-modal-actions">
               <button 
                 onClick={submitPayment} 
-                className={`btn-primary-gaming w-100 ${processing ? "processing" : ""}`} 
+                className={`btn-primary-gaming payment-full-width ${processing ? "processing" : ""}`} 
                 disabled={processing}
               >
                 {processing 
@@ -253,7 +252,7 @@ export default function PaymentPage() {
               </button>
               <button 
                 onClick={() => setShowModal(false)} 
-                className="btn-secondary-gaming w-100" 
+                className="btn-secondary-gaming payment-full-width" 
                 disabled={processing}
               >
                 Cancel

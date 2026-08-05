@@ -39,6 +39,7 @@ const UserSideNav = () => {
      { path: "/tournaments", label: "Tournaments" },
      { path: "/history", label: "History" },
      { path: "/payments", label: "Payments" },
+     { path: "/chat", label: "💬 Chat" },
      { path: "/profile", label: "Profile" },
    ];
 
