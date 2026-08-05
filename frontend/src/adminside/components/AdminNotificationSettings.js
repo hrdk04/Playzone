@@ -17,6 +17,8 @@ const AdminProfile = ({ username, isMobile = false }) => {
   const [notificationStatus, setNotificationStatus] = useState("checking")
   const [otpSent, setOtpSent] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
+  const [editingEmail, setEditingEmail] = useState(false)
+  const [sendingOtp, setSendingOtp] = useState(false)
 
   // Security states
   const [currentPassword, setCurrentPassword] = useState("")
@@ -98,6 +100,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
     if (!emailRegex.test(email)) return toast.error("Invalid email")
 
     try {
+      setSendingOtp(true)
       await axios.post(
         `${API_BASE_URL}/admin/email/send-otp`,
         { username: resolvedUsername, email },
@@ -107,9 +110,12 @@ const AdminProfile = ({ username, isMobile = false }) => {
       setNotificationStatus("pending")
       setResendCooldown(30)
       toast.success("OTP sent to your email")
+      // keep editing mode until verification
     } catch (err) {
       console.error("Send OTP error:", err)
       toast.error(err?.response?.data?.message || "Failed to send OTP")
+    } finally {
+      setSendingOtp(false)
     }
   }
 
@@ -138,6 +144,18 @@ const AdminProfile = ({ username, isMobile = false }) => {
   const handleResendOtp = () => {
     if (resendCooldown > 0) return
     handleSendOtp()
+  }
+
+  const startEditEmail = () => {
+    setEditingEmail(true)
+  }
+
+  const cancelEditEmail = () => {
+    // reset email input to stored value
+    setEmail(profile?.notificationEmail || "")
+    setEditingEmail(false)
+    setOtpSent(false)
+    setNotificationStatus(profile?.isEmailVerified ? "verified" : "not-set")
   }
 
   // Security handlers
@@ -405,7 +423,7 @@ const AdminProfile = ({ username, isMobile = false }) => {
 
           {notificationStatus === "checking" && <p>Loading...</p>}
 
-          {notificationStatus === "not-set" && !otpSent && (
+          {notificationStatus === "not-set" && !otpSent && !editingEmail && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>
                 <label style={{ display: "block", marginBottom: "0.5rem", color: theme.colors.lightGray }}>
@@ -428,19 +446,79 @@ const AdminProfile = ({ username, isMobile = false }) => {
               </div>
               <button
                 onClick={handleSendOtp}
+                disabled={sendingOtp}
                 style={{
                   padding: "0.75rem 1.5rem",
                   background: theme.colors.primary,
                   border: "none",
                   borderRadius: "6px",
                   color: "#fff",
-                  cursor: "pointer",
+                  cursor: sendingOtp ? "not-allowed" : "pointer",
                   fontSize: "14px",
                   fontWeight: "500"
                 }}
               >
-                Send Verification OTP
+                {sendingOtp ? "Sending..." : "Send Verification OTP"}
               </button>
+            </div>
+          )}
+
+          {/* Show verified email with edit option */}
+          {notificationStatus === "verified" && !editingEmail && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
+              <div style={{ color: theme.colors.lightGray }}>
+                Email for notifications: <strong style={{ color: "var(--text-primary)" }}>{profile?.notificationEmail || email}</strong>
+              </div>
+              <div>
+                <button onClick={startEditEmail} style={{ padding: "0.5rem 1rem", background: theme.colors.primary, color: "#fff", border: "none", borderRadius: "6px" }}>Edit</button>
+              </div>
+            </div>
+          )}
+
+          {/* Editing existing email */}
+          {(editingEmail || (notificationStatus === "not-set" && otpSent)) && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "0.5rem", color: theme.colors.lightGray }}>
+                  New notification email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem",
+                    borderRadius: "6px",
+                    border: "1px solid var(--border-color)",
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)"
+                  }}
+                  placeholder="Enter new email"
+                />
+              </div>
+              <div style={{ display: "flex", gap: "1rem" }}>
+                <button
+                  onClick={handleSendOtp}
+                  disabled={sendingOtp}
+                  style={{
+                    flex: 1,
+                    padding: "0.75rem 1.5rem",
+                    background: theme.colors.primary,
+                    border: "none",
+                    borderRadius: "6px",
+                    color: "#fff",
+                    cursor: sendingOtp ? "not-allowed" : "pointer",
+                    fontSize: "14px",
+                    fontWeight: "500"
+                  }}
+                >
+                  {sendingOtp ? "Sending..." : "Send Verification OTP"}
+                </button>
+                <button onClick={cancelEditEmail} style={{ flex: 1, padding: "0.75rem 1.5rem", background: theme.colors.secondary, border: "none", borderRadius: "6px", color: "#fff" }}>
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
 
